@@ -9,6 +9,8 @@ import {
 } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import {
+  CHECKPOINT_ID_PREFIX,
+  LEGACY_CHECKPOINT_ID_PREFIX,
   LEGACY_REF_NAMESPACE,
   LEGACY_STORE_DIRECTORY_NAME,
   REF_NAMESPACE,
@@ -21,7 +23,22 @@ import {
   setRuntimeChangeContract,
 } from "./contract.mjs";
 import { createEvidenceReceipt } from "./receipt.mjs";
+import {
+  assertPrefixedStorageId,
+  storageIdFromJsonFilename,
+} from "./storage-key.mjs";
 import { runGit } from "../git/git.mjs";
+
+const CHECKPOINT_PREFIXES = [CHECKPOINT_ID_PREFIX, LEGACY_CHECKPOINT_ID_PREFIX];
+const SESSION_PREFIXES = ["session"];
+
+function assertCheckpointId(id) {
+  return assertPrefixedStorageId(id, CHECKPOINT_PREFIXES, "checkpoint ID");
+}
+
+function assertSessionId(id) {
+  return assertPrefixedStorageId(id, SESSION_PREFIXES, "session ID");
+}
 
 function selectedStoreDirectory(root) {
   const preferred = join(root, STORE_DIRECTORY_NAME);
@@ -133,6 +150,7 @@ export async function initializeStore(root) {
       createdAt: now,
       visual: { viewport: { width: 1440, height: 900 }, waitMs: 350 },
     };
+    assertSessionId(config.currentSessionId);
     await writeJsonAtomic(paths.config, config);
     await writeJsonAtomic(paths.state, {
       schemaVersion: 1,
@@ -177,6 +195,7 @@ export async function createSession(root, name = null) {
     updatedAt: now,
     checkpoints: [],
   };
+  assertSessionId(session.id);
   config.currentSessionId = session.id;
   config.updatedAt = now;
   await writeJsonAtomic(paths.config, config);
@@ -185,6 +204,7 @@ export async function createSession(root, name = null) {
 }
 
 export async function loadSession(root, id) {
+  assertSessionId(id);
   const session = await readJson(join(storePaths(root).sessions, `${id}.json`));
   if (!session) throw new Error(`Session ${id} was not found.`);
   return session;
@@ -211,6 +231,7 @@ export async function saveCheckpoint(root, checkpoint) {
     );
   }
   assertValidCheckpoint(checkpoint);
+  assertCheckpointId(checkpoint.id);
   const paths = storePaths(root);
   await mkdir(paths.checkpoints, { recursive: true });
   await writeJsonAtomic(
@@ -220,6 +241,7 @@ export async function saveCheckpoint(root, checkpoint) {
 }
 
 export async function loadCheckpoint(root, id) {
+  assertCheckpointId(id);
   const checkpoint = await readJson(
     join(storePaths(root).checkpoints, `${id}.json`),
   );
@@ -230,6 +252,7 @@ export async function loadCheckpoint(root, id) {
 }
 
 export async function deleteCheckpoint(root, id) {
+  assertCheckpointId(id);
   await rm(join(storePaths(root).checkpoints, `${id}.json`), { force: true });
 }
 
@@ -238,7 +261,7 @@ export async function listCheckpoints(root) {
   let names = [];
   try {
     names = (await readdir(paths.checkpoints)).filter((name) =>
-      name.endsWith(".json"),
+      Boolean(storageIdFromJsonFilename(name, CHECKPOINT_PREFIXES)),
     );
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
@@ -248,12 +271,15 @@ export async function listCheckpoints(root) {
   );
   return checkpoints
     .filter(Boolean)
+    .map((checkpoint) => assertValidCheckpoint(checkpoint))
     .sort((left, right) =>
       String(right.createdAt).localeCompare(String(left.createdAt)),
     );
 }
 
 export async function appendCheckpointToSession(root, sessionId, checkpointId) {
+  assertSessionId(sessionId);
+  assertCheckpointId(checkpointId);
   const paths = storePaths(root);
   const sessionPath = join(paths.sessions, `${sessionId}.json`);
   const session = (await readJson(sessionPath)) || {
@@ -273,6 +299,8 @@ export async function removeCheckpointFromSession(
   sessionId,
   checkpointId,
 ) {
+  assertSessionId(sessionId);
+  assertCheckpointId(checkpointId);
   const paths = storePaths(root);
   const sessionPath = join(paths.sessions, `${sessionId}.json`);
   const session = await readJson(sessionPath);
