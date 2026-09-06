@@ -148,10 +148,12 @@ test("capture the PatchOath dashboard at a real desktop viewport", async ({
   expect(workspace.height).toBeGreaterThanOrEqual(770);
   expect(workspace.height).toBeLessThanOrEqual(790);
 
-  const impactScroll = await page.locator(".impact-panel").evaluate((element) => ({
-    clientHeight: element.clientHeight,
-    scrollHeight: element.scrollHeight,
-  }));
+  const impactScroll = await page
+    .locator(".impact-panel")
+    .evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
   expect(impactScroll.scrollHeight).toBeGreaterThan(impactScroll.clientHeight);
 
   await mkdir("test-results", { recursive: true });
