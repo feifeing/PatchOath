@@ -55,7 +55,7 @@ export async function applyRestore(root, plan) {
   }
 
   const temporaryDirectory = await mkdtemp(
-    join(tmpdir(), "vibetrace-restore-"),
+    join(tmpdir(), "patchoath-restore-"),
   );
   const temporaryIndex = join(temporaryDirectory, "index");
   const env = { GIT_INDEX_FILE: temporaryIndex };
