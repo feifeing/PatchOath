@@ -1,6 +1,10 @@
-import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative } from "node:path";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  inspectVisualArtifact,
+  verifyVisualArtifact,
+} from "../core/artifact-file.mjs";
 import { computeObservedContractDelta } from "../core/contract-delta.mjs";
 import {
   createDisclosureCapsule,
@@ -15,17 +19,6 @@ import { collectCommitDiff } from "../git/diff.mjs";
 const sourceWebDirectory = fileURLToPath(
   new URL("../../web/", import.meta.url),
 );
-
-async function copyIfPresent(source, destination) {
-  try {
-    await access(source);
-    await mkdir(dirname(destination), { recursive: true });
-    await copyFile(source, destination);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function unavailable(reason, detail = null) {
   return { status: "unavailable", reason, detail };
@@ -175,6 +168,22 @@ function portableCheckpoint(root, checkpoint, assetMap, historicalRecords) {
   return copy;
 }
 
+async function copyVerifiedCapture(root, source, expectedSha256, destination) {
+  const checked = await verifyVisualArtifact(root, source, expectedSha256);
+  if (checked.status !== "verified") return false;
+  await mkdir(dirname(destination), { recursive: true });
+  await copyFile(checked.path, destination);
+  return true;
+}
+
+async function copyContainedDerivedArtifact(root, source, destination) {
+  const checked = await inspectVisualArtifact(root, source);
+  if (checked.status !== "accessible") return false;
+  await mkdir(dirname(destination), { recursive: true });
+  await copyFile(checked.path, destination);
+  return true;
+}
+
 export async function generateReport(root, checkpoints, selectedId) {
   const selected =
     checkpoints.find((checkpoint) => checkpoint.id === selectedId) ||
@@ -202,17 +211,30 @@ export async function generateReport(root, checkpoints, selectedId) {
 
   const assetMap = new Map();
   for (const checkpoint of checkpoints) {
-    const sources = [
-      checkpoint.visual?.before?.image,
-      checkpoint.visual?.after?.image,
-      checkpoint.analysis?.visual?.pixel?.diffImage,
-    ].filter(Boolean);
-    for (const source of sources) {
-      const destinationName = `${checkpoint.id}-${basename(source)}`;
+    for (const phase of ["before", "after"]) {
+      const capture = checkpoint.visual?.[phase];
+      if (!capture?.image || !capture?.imageSha256) continue;
+      const destinationName = `${checkpoint.id}-${basename(capture.image)}`;
       const destination = join(assetDirectory, destinationName);
-      const sourcePath = isAbsolute(source) ? source : join(root, source);
-      if (await copyIfPresent(sourcePath, destination))
-        assetMap.set(source, `./assets/${destinationName}`);
+      if (
+        await copyVerifiedCapture(
+          root,
+          capture.image,
+          capture.imageSha256,
+          destination,
+        )
+      ) {
+        assetMap.set(capture.image, `./assets/${destinationName}`);
+      }
+    }
+
+    const diffImage = checkpoint.analysis?.visual?.pixel?.diffImage;
+    if (diffImage) {
+      const destinationName = `${checkpoint.id}-${basename(diffImage)}`;
+      const destination = join(assetDirectory, destinationName);
+      if (await copyContainedDerivedArtifact(root, diffImage, destination)) {
+        assetMap.set(diffImage, `./assets/${destinationName}`);
+      }
     }
   }
 
