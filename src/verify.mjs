@@ -1,12 +1,10 @@
-import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
+import { verifyVisualArtifact } from "./core/artifact-file.mjs";
 import { checkpointRefCandidates } from "./core/brand.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import { listCheckpoints } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 
-const HELP = `patchoath verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Receipt coverage is versioned; pre-v0.3 receipts and refs remain verifiable with their original scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
+const HELP = `patchoath verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Visual artifact reads are confined to regular files inside the active PatchOath evidence store. Receipt coverage is versioned; pre-v0.3 receipts and refs remain verifiable with their original scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
 
 function parse(argv) {
   const options = new Set();
@@ -40,11 +38,6 @@ function resolve(checkpoints, token) {
   if (matches.length > 1)
     throw new Error(`Checkpoint prefix ${token} is ambiguous.`);
   return matches[0];
-}
-
-async function sha256File(path) {
-  const bytes = await readFile(path);
-  return createHash("sha256").update(bytes).digest("hex");
 }
 
 function resolveSnapshotRef(root, checkpoint, phase, commit) {
@@ -103,28 +96,18 @@ async function verifyVisualArtifacts(root, checkpoint) {
   for (const phase of ["before", "after"]) {
     const capture = checkpoint.visual?.[phase];
     if (!capture?.image || !capture?.imageSha256) continue;
-    const path = isAbsolute(capture.image)
-      ? capture.image
-      : join(root, capture.image);
-    try {
-      const actualSha256 = await sha256File(path);
-      checks.push({
-        phase,
-        path: capture.image,
-        expectedSha256: capture.imageSha256,
-        actualSha256,
-        status: actualSha256 === capture.imageSha256 ? "verified" : "mismatch",
-      });
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-      checks.push({
-        phase,
-        path: capture.image,
-        expectedSha256: capture.imageSha256,
-        actualSha256: null,
-        status: "missing",
-      });
-    }
+    const checked = await verifyVisualArtifact(
+      root,
+      capture.image,
+      capture.imageSha256,
+    );
+    checks.push({
+      phase,
+      path: capture.image,
+      expectedSha256: capture.imageSha256,
+      actualSha256: checked.actualSha256 || null,
+      status: checked.status,
+    });
   }
   return checks;
 }
@@ -137,6 +120,12 @@ function verificationReason(receipt, gitEvidence, artifacts) {
     return "git-ref-missing";
   if (gitEvidence.some((item) => item.refStatus === "mismatch"))
     return "git-ref-mismatch";
+  if (artifacts.some((artifact) => artifact.status === "unsafe-path"))
+    return "artifact-path-unsafe";
+  if (artifacts.some((artifact) => artifact.status === "not-regular-file"))
+    return "artifact-not-regular-file";
+  if (artifacts.some((artifact) => artifact.status === "missing-hash"))
+    return "artifact-hash-missing";
   if (artifacts.some((artifact) => artifact.status === "missing"))
     return "artifact-missing";
   if (artifacts.some((artifact) => artifact.status === "mismatch"))
