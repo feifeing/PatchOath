@@ -208,7 +208,11 @@ test("capsule CLI refuses to repackage checkpoint data whose source receipt no l
   );
   const stored = JSON.parse(await readFile(checkpointPath, "utf8"));
   stored.prompt.text = "tampered prompt after receipt creation";
-  await writeFile(checkpointPath, `${JSON.stringify(stored, null, 2)}\n`, "utf8");
+  await writeFile(
+    checkpointPath,
+    `${JSON.stringify(stored, null, 2)}\n`,
+    "utf8",
+  );
 
   const stdout = memoryStream();
   const stderr = memoryStream();
@@ -238,14 +242,11 @@ test("explicit capsule output refuses overwrite unless --force is supplied", asy
   await writeFile(target, "sentinel\n", "utf8");
   const blockedErr = memoryStream();
   assert.equal(
-    await runCapsule(
-      [checkpoint.id, "--out", "existing.json", "--json"],
-      {
-        cwd: root,
-        stdout: memoryStream(),
-        stderr: blockedErr,
-      },
-    ),
+    await runCapsule([checkpoint.id, "--out", "existing.json", "--json"], {
+      cwd: root,
+      stdout: memoryStream(),
+      stderr: blockedErr,
+    }),
     1,
   );
   assert.match(blockedErr.value(), /Output already exists/u);
