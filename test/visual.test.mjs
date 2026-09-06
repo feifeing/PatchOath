@@ -18,7 +18,7 @@ function image(color) {
 }
 
 test("visual comparison reports honest pixel, layout, DOM, and semantic layers", async (context) => {
-  const root = await mkdtemp(join(tmpdir(), "vibetrace-visual-"));
+  const root = await mkdtemp(join(tmpdir(), "patchoath-visual-"));
   context.after(() => rm(root, { recursive: true, force: true }));
   const beforePath = join(root, "before.png");
   const afterPath = join(root, "after.png");
