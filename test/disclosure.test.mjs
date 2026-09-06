@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 import { runCapsule } from "../src/capsule.mjs";
 import {
@@ -9,7 +10,11 @@ import {
   verifyDisclosureCapsule,
 } from "../src/core/disclosure.mjs";
 import { createEvidenceReceipt } from "../src/core/receipt.mjs";
-import { initializeStore, saveCheckpoint } from "../src/core/store.mjs";
+import {
+  initializeStore,
+  saveCheckpoint,
+  storePaths,
+} from "../src/core/store.mjs";
 import {
   createRepository,
   git,
@@ -156,7 +161,7 @@ test("disclosure drift and receipt tampering fail independently", async () => {
   assert.equal(tamperVerification.audit.valid, true);
 });
 
-test("capsule CLI writes a minimum-disclosure artifact that can be verified standalone", async () => {
+test("capsule CLI writes a minimum-disclosure artifact only after source receipt verification", async () => {
   const root = await createRepository();
   const { config } = await initializeStore(root);
   const checkpoint = checkpointFixture(root, config.currentSessionId);
@@ -172,6 +177,8 @@ test("capsule CLI writes a minimum-disclosure artifact that can be verified stan
     0,
   );
   const result = JSON.parse(stdout.value());
+  assert.equal(result.sourceReceiptVerified, true);
+  assert.equal(result.sourceReceiptCoverage?.scope, "effect-manifest-v2");
   const bytes = await readFile(result.path, "utf8");
   assert.equal(bytes.includes(SECRET_PROMPT), false);
   assert.equal(bytes.includes(SECRET_PATH), false);
@@ -187,4 +194,76 @@ test("capsule CLI writes a minimum-disclosure artifact that can be verified stan
     0,
   );
   assert.equal(JSON.parse(verifyOut.value()).reason, "verified");
+});
+
+test("capsule CLI refuses to repackage checkpoint data whose source receipt no longer verifies", async () => {
+  const root = await createRepository();
+  const { config } = await initializeStore(root);
+  const checkpoint = checkpointFixture(root, config.currentSessionId);
+  await saveCheckpoint(root, checkpoint);
+
+  const checkpointPath = join(
+    storePaths(root).checkpoints,
+    `${checkpoint.id}.json`,
+  );
+  const stored = JSON.parse(await readFile(checkpointPath, "utf8"));
+  stored.prompt.text = "tampered prompt after receipt creation";
+  await writeFile(checkpointPath, `${JSON.stringify(stored, null, 2)}\n`, "utf8");
+
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+  assert.equal(
+    await runCapsule([checkpoint.id, "--json"], {
+      cwd: root,
+      stdout,
+      stderr,
+    }),
+    2,
+  );
+  assert.equal(stderr.value(), "");
+  const result = JSON.parse(stdout.value());
+  assert.equal(result.created, false);
+  assert.equal(result.reason, "source-receipt-unverified");
+  assert.equal(result.sourceReceipt.valid, false);
+  assert.equal(result.sourceReceipt.reason, "evidence-receipt-mismatch");
+});
+
+test("explicit capsule output refuses overwrite unless --force is supplied", async () => {
+  const root = await createRepository();
+  const { config } = await initializeStore(root);
+  const checkpoint = checkpointFixture(root, config.currentSessionId);
+  await saveCheckpoint(root, checkpoint);
+
+  const target = join(root, "existing.json");
+  await writeFile(target, "sentinel\n", "utf8");
+  const blockedErr = memoryStream();
+  assert.equal(
+    await runCapsule(
+      [checkpoint.id, "--out", "existing.json", "--json"],
+      {
+        cwd: root,
+        stdout: memoryStream(),
+        stderr: blockedErr,
+      },
+    ),
+    1,
+  );
+  assert.match(blockedErr.value(), /Output already exists/u);
+  assert.equal(await readFile(target, "utf8"), "sentinel\n");
+
+  const forcedOut = memoryStream();
+  assert.equal(
+    await runCapsule(
+      [checkpoint.id, "--out", "existing.json", "--force", "--json"],
+      {
+        cwd: root,
+        stdout: forcedOut,
+        stderr: memoryStream(),
+      },
+    ),
+    0,
+  );
+  const replaced = await readFile(target, "utf8");
+  assert.match(replaced, /"kind": "patchoath-disclosure-capsule"/u);
+  assert.equal(JSON.parse(forcedOut.value()).path, target);
 });
