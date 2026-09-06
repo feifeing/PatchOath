@@ -1,6 +1,7 @@
 import { classifyFile, moduleForPath } from "./classify.mjs";
 
-const RUNTIME_CONTRACT_ENV = "VIBETRACE_CHANGE_CONTRACT";
+const RUNTIME_CONTRACT_ENV = "PATCHOATH_CHANGE_CONTRACT";
+const LEGACY_RUNTIME_CONTRACT_ENV = "VIBETRACE_CHANGE_CONTRACT";
 const PROTECTABLE_SURFACES = new Set([
   "ci",
   "dependencies",
@@ -109,13 +110,17 @@ export function createChangeContract({
 export function setRuntimeChangeContract(contract) {
   if (!contract) {
     delete process.env[RUNTIME_CONTRACT_ENV];
+    delete process.env[LEGACY_RUNTIME_CONTRACT_ENV];
     return;
   }
   process.env[RUNTIME_CONTRACT_ENV] = JSON.stringify(contract);
+  delete process.env[LEGACY_RUNTIME_CONTRACT_ENV];
 }
 
 export function runtimeChangeContract() {
-  const raw = process.env[RUNTIME_CONTRACT_ENV];
+  const raw =
+    process.env[RUNTIME_CONTRACT_ENV] ||
+    process.env[LEGACY_RUNTIME_CONTRACT_ENV];
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
