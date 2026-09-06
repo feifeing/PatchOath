@@ -25,7 +25,6 @@ export function classifyMutationOperation(argv) {
   const command = argv[0];
   if (command === "init") return "init";
   if (command === "checkpoint") return "checkpoint";
-  if (command === "attest") return "attest";
   if (command === "report") return "report";
   if (command === "session" && argv[1] === "new") return "session new";
   if (command === "restore" && argv.includes("--apply")) return "restore --apply";
