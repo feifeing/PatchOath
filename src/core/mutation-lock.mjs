@@ -12,6 +12,34 @@ function gitCommonDirectory(root) {
   return isAbsolute(discovered) ? discovered : resolve(root, discovered);
 }
 
+function isHelpOrVersion(argv) {
+  return argv.some((token) =>
+    ["--help", "-h", "--version", "-v"].includes(token),
+  );
+}
+
+export function classifyMutationOperation(argv) {
+  if (!Array.isArray(argv) || argv.length === 0 || isHelpOrVersion(argv)) {
+    return null;
+  }
+  const command = argv[0];
+  if (command === "init") return "init";
+  if (command === "checkpoint") return "checkpoint";
+  if (command === "attest") return "attest";
+  if (command === "report") return "report";
+  if (command === "session" && argv[1] === "new") return "session new";
+  if (command === "restore" && argv.includes("--apply")) return "restore --apply";
+  if (command === "capsule" && !argv.includes("--verify")) return "capsule";
+  if (
+    command === "review" &&
+    !argv.includes("--verify") &&
+    !argv.includes("--list")
+  ) {
+    return "review";
+  }
+  return null;
+}
+
 export function mutationLockPath(root) {
   return join(gitCommonDirectory(root), LOCK_DIRECTORY_NAME, LOCK_FILE_NAME);
 }
