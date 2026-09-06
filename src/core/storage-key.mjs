@@ -20,6 +20,7 @@ export function isPrefixedStorageId(value, prefixes) {
     (prefix) =>
       typeof prefix === "string" &&
       prefix.length > 0 &&
+      value.length > prefix.length + 1 &&
       value.startsWith(`${prefix}_`),
   );
 }
