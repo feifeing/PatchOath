@@ -73,41 +73,66 @@ async function runInit(stdout) {
   return 0;
 }
 
-const io = { stdout: process.stdout, stderr: process.stderr };
-const topLevel = process.argv.slice(2);
-
-try {
+async function dispatch(topLevel, io) {
   if (topLevel.length === 1 && ["--version", "-v"].includes(topLevel[0])) {
     io.stdout.write(`${VERSION}\n`);
-  } else if (
+    return 0;
+  }
+  if (
     topLevel.length === 0 ||
     (topLevel.length === 1 && ["--help", "-h"].includes(topLevel[0]))
   ) {
     io.stdout.write(`${HELP}\n`);
-  } else if (topLevel.length === 1 && topLevel[0] === "init") {
-    process.exitCode = await runInit(process.stdout);
-  } else if (process.argv[2] === "attest") {
+    return 0;
+  }
+  if (topLevel.length === 1 && topLevel[0] === "init") {
+    return runInit(io.stdout);
+  }
+  if (topLevel[0] === "attest") {
     const { runAttest } = await import("../src/attest.mjs");
-    process.exitCode = await runAttest(process.argv.slice(3), io);
-  } else if (process.argv[2] === "verify") {
+    return runAttest(topLevel.slice(1), io);
+  }
+  if (topLevel[0] === "verify") {
     const { runVerify } = await import("../src/verify.mjs");
-    process.exitCode = await runVerify(process.argv.slice(3), io);
-  } else if (process.argv[2] === "restore") {
+    return runVerify(topLevel.slice(1), io);
+  }
+  if (topLevel[0] === "restore") {
     const { runRestore } = await import("../src/restore.mjs");
-    process.exitCode = await runRestore(process.argv.slice(3), io);
-  } else if (process.argv[2] === "capsule") {
+    return runRestore(topLevel.slice(1), io);
+  }
+  if (topLevel[0] === "capsule") {
     const { runCapsule } = await import("../src/capsule.mjs");
-    process.exitCode = await runCapsule(process.argv.slice(3), io);
-  } else if (process.argv[2] === "contract-delta") {
+    return runCapsule(topLevel.slice(1), io);
+  }
+  if (topLevel[0] === "contract-delta") {
     const { runContractDelta } = await import("../src/contract-delta.mjs");
-    process.exitCode = await runContractDelta(process.argv.slice(3), io);
-  } else if (process.argv[2] === "review") {
+    return runContractDelta(topLevel.slice(1), io);
+  }
+  if (topLevel[0] === "review") {
     const { runReview } = await import("../src/review.mjs");
-    process.exitCode = await runReview(process.argv.slice(3), io);
+    return runReview(topLevel.slice(1), io);
+  }
+
+  const argv = await applyCheckpointContract(topLevel);
+  const { runCli } = await import("../src/cli.mjs");
+  return runCli(argv, io);
+}
+
+const io = { stdout: process.stdout, stderr: process.stderr };
+const topLevel = process.argv.slice(2);
+
+try {
+  const { classifyMutationOperation, withMutationLock } =
+    await import("../src/core/mutation-lock.mjs");
+  const operation = classifyMutationOperation(topLevel);
+  if (!operation) {
+    process.exitCode = await dispatch(topLevel, io);
   } else {
-    const argv = await applyCheckpointContract(topLevel);
-    const { runCli } = await import("../src/cli.mjs");
-    process.exitCode = await runCli(argv, io);
+    const { findRepositoryRoot } = await import("../src/git/git.mjs");
+    const root = findRepositoryRoot(process.cwd());
+    process.exitCode = await withMutationLock(root, operation, () =>
+      dispatch(topLevel, io),
+    );
   }
 } catch (error) {
   io.stderr.write(`error ${error.message}\n`);
