@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   createChangeContract,
   evaluateChangeContract,
+  runtimeChangeContract,
+  setRuntimeChangeContract,
 } from "../src/core/contract.mjs";
 import { createEvidenceReceipt } from "../src/core/receipt.mjs";
 import { analyzeChangeSet } from "../src/core/risk.mjs";
@@ -79,6 +81,42 @@ test("protected surfaces are validated when the contract is declared", () => {
     () => createChangeContract({ protectedSurfaces: "auth,magic" }),
     /Unknown protected surface\(s\): magic/u,
   );
+});
+
+test("runtime contracts prefer the PatchOath environment while accepting the legacy fallback", (context) => {
+  const modernKey = "PATCHOATH_CHANGE_CONTRACT";
+  const legacyKey = "VIBETRACE_CHANGE_CONTRACT";
+  const previousModern = process.env[modernKey];
+  const previousLegacy = process.env[legacyKey];
+
+  context.after(() => {
+    if (previousModern === undefined) delete process.env[modernKey];
+    else process.env[modernKey] = previousModern;
+    if (previousLegacy === undefined) delete process.env[legacyKey];
+    else process.env[legacyKey] = previousLegacy;
+  });
+
+  delete process.env[modernKey];
+  delete process.env[legacyKey];
+
+  const legacyContract = createChangeContract({ allow: "legacy/**" });
+  process.env[legacyKey] = JSON.stringify(legacyContract);
+  assert.deepEqual(runtimeChangeContract(), legacyContract);
+
+  const modernContract = createChangeContract({
+    allow: "src/**",
+    deny: "src/auth/**",
+  });
+  process.env[modernKey] = JSON.stringify(modernContract);
+  assert.deepEqual(runtimeChangeContract(), modernContract);
+
+  setRuntimeChangeContract(modernContract);
+  assert.deepEqual(JSON.parse(process.env[modernKey]), modernContract);
+  assert.equal(process.env[legacyKey], undefined);
+
+  setRuntimeChangeContract(null);
+  assert.equal(process.env[modernKey], undefined);
+  assert.equal(process.env[legacyKey], undefined);
 });
 
 test("module budgets turn cross-module spread into explicit authorization drift", () => {
