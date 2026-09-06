@@ -208,7 +208,9 @@ export async function runCapsule(
       stdout.write("\n");
       stdout.write(`✦ PatchOath Evidence Capsule ${checkpoint.id}\n`);
       stdout.write(`  output     ${outputPath}\n`);
-      stdout.write(`  source     ${checkpoint.receipt.receiptId} (receipt verified)\n`);
+      stdout.write(
+        `  source     ${checkpoint.receipt.receiptId} (receipt verified)\n`,
+      );
       stdout.write(`  disclosure ${capsule.disclosureReceipt.receiptId}\n`);
       stdout.write(
         `  omitted    ${capsule.disclosure.omitted.join(", ") || "none"}\n`,
