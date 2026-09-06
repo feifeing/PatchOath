@@ -1,9 +1,6 @@
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  LEGACY_REVIEW_RECORD_PREFIX,
-  REVIEW_RECORD_PREFIX,
-} from "./brand.mjs";
+import { LEGACY_REVIEW_RECORD_PREFIX, REVIEW_RECORD_PREFIX } from "./brand.mjs";
 import {
   assertPrefixedStorageId,
   storageIdFromJsonFilename,
@@ -17,7 +14,11 @@ export function historicalReviewDirectory(root) {
 }
 
 export async function saveHistoricalEffectReview(root, record) {
-  assertPrefixedStorageId(record?.recordId, REVIEW_PREFIXES, "review record ID");
+  assertPrefixedStorageId(
+    record?.recordId,
+    REVIEW_PREFIXES,
+    "review record ID",
+  );
   const directory = historicalReviewDirectory(root);
   await mkdir(directory, { recursive: true });
   const path = join(directory, `${record.recordId}.json`);
