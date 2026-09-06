@@ -15,6 +15,17 @@ This distinction matters because evidence collected for review can itself contai
 
 `patchoath capsule` creates a local, portable JSON projection of a completed checkpoint.
 
+Before creating a capsule, the CLI recomputes the checkpoint's stored **Evidence Receipt**. If that receipt no longer matches the current checkpoint evidence, export is refused. This prevents modified checkpoint metadata from being repackaged behind a new, internally consistent Disclosure Receipt while still pointing at a stale source receipt.
+
+This prerequisite has a deliberately narrow meaning:
+
+```text
+sourceReceiptVerified = true
+  → the versioned Evidence Receipt recomputed successfully
+```
+
+It does **not** mean the capsule command performed every check in `patchoath verify`. Full verification separately checks recorded Git objects/private refs and local visual artifact bytes when present.
+
 The default policy is deny-by-default for high-disclosure fields:
 
 ```bash
@@ -51,6 +62,22 @@ patchoath capsule --include-contract
 ```
 
 These flags enlarge the disclosure surface; they do not make the additional data safe to publish. Review the resulting capsule before sharing it.
+
+### Explicit output paths do not overwrite silently
+
+The default capsule path lives inside the local PatchOath evidence store and may be refreshed for the same checkpoint. A caller-supplied `--out` path is treated differently because it can point at ordinary project files.
+
+```bash
+patchoath capsule --out review-evidence.json
+```
+
+If that explicit target already exists, PatchOath refuses to replace it. Deliberate replacement requires a second opt-in:
+
+```bash
+patchoath capsule --out review-evidence.json --force
+```
+
+`--force` applies only to an explicit `--out` path. It does not weaken source-receipt verification or disclosure-policy checks.
 
 ## Disclosure Receipt
 
