@@ -1,10 +1,5 @@
 import assert from "node:assert/strict";
-import {
-  mkdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { createRepository } from "../test-support/helpers.mjs";
@@ -31,7 +26,10 @@ test("storage IDs are single safe repository-local path segments", () => {
   assert.equal(isSafeStorageSegment("po_20260907_ab12cd"), true);
   assert.equal(isPrefixedStorageId("po_20260907_ab12cd", ["po", "vt"]), true);
   assert.equal(isPrefixedStorageId("vt_legacy", ["po", "vt"]), true);
-  assert.equal(storageIdFromJsonFilename("po_example.json", ["po"]), "po_example");
+  assert.equal(
+    storageIdFromJsonFilename("po_example.json", ["po"]),
+    "po_example",
+  );
 
   for (const value of [
     "",
@@ -71,7 +69,10 @@ test("checkpoint and session store APIs reject path-like identifiers before file
       "po_",
     ]) {
       await assert.rejects(loadCheckpoint(root, id), /Invalid checkpoint ID/u);
-      await assert.rejects(deleteCheckpoint(root, id), /Invalid checkpoint ID/u);
+      await assert.rejects(
+        deleteCheckpoint(root, id),
+        /Invalid checkpoint ID/u,
+      );
     }
 
     for (const id of [
