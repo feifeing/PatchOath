@@ -14,6 +14,11 @@
   <img alt="local first" src="https://img.shields.io/badge/evidence-local--first-11151a.svg" />
 </p>
 
+<p align="center">
+  <img src="docs/patchoath-dashboard.webp" alt="PatchOath evidence dashboard showing intent, authority, observed effect, review, and disclosure" width="1100" />
+</p>
+<p align="center"><sub>Real Chromium E2E capture of the current PatchOath review workspace.</sub></p>
+
 ---
 
 You ask a coding agent to change one button.
