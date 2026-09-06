@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">PatchOath</title>
+  <desc id="desc">A geometric seal with a check-shaped patch boundary.</desc>
+  <rect width="96" height="96" rx="24" fill="#0b0d11"/>
+  <path d="M48 14 77 30.7v33.5L48 81 19 64.2V30.7L48 14Z" fill="none" stroke="#c8ff66" stroke-width="5" stroke-linejoin="round"/>
+  <path d="m32 49 10 10 22-24" fill="none" stroke="#f5f7fb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="48" cy="14" r="4" fill="#c8ff66"/>
+</svg>

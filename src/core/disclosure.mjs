@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  DISCLOSURE_RECEIPT_PREFIX,
+  LEGACY_DISCLOSURE_RECEIPT_PREFIX,
+  hasLegacyPrefix,
+} from "./brand.mjs";
 
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
@@ -144,6 +149,22 @@ function omittedFields(policy) {
   return omitted.sort();
 }
 
+function disclosureReceiptId({
+  sourceEvidenceReceiptId,
+  policySha256,
+  projectionSha256,
+  legacyPrefix = false,
+}) {
+  const prefix = legacyPrefix
+    ? LEGACY_DISCLOSURE_RECEIPT_PREFIX
+    : DISCLOSURE_RECEIPT_PREFIX;
+  return `${prefix}_${sha256({
+    sourceEvidenceReceiptId,
+    policySha256,
+    projectionSha256,
+  }).slice(0, 24)}`;
+}
+
 export function createDisclosureCapsule(
   checkpoint,
   policy = createDisclosurePolicy(),
@@ -156,7 +177,7 @@ export function createDisclosureCapsule(
 
   const body = {
     schemaVersion: 1,
-    kind: "vibetrace-disclosure-capsule",
+    kind: "patchoath-disclosure-capsule",
     source: {
       checkpointId: checkpoint.id,
       evidenceReceiptId: checkpoint.receipt.receiptId,
@@ -170,11 +191,11 @@ export function createDisclosureCapsule(
   };
   const policySha256 = sha256(policy);
   const projectionSha256 = sha256(body.evidence);
-  const receiptId = `vtd_${sha256({
+  const receiptId = disclosureReceiptId({
     sourceEvidenceReceiptId: body.source.evidenceReceiptId,
     policySha256,
     projectionSha256,
-  }).slice(0, 24)}`;
+  });
 
   return {
     ...body,
@@ -242,11 +263,15 @@ export function verifyDisclosureCapsule(capsule) {
 
   const policySha256 = sha256(capsule.disclosure.policy);
   const projectionSha256 = sha256(capsule.evidence);
-  const expectedReceiptId = `vtd_${sha256({
+  const expectedReceiptId = disclosureReceiptId({
     sourceEvidenceReceiptId: capsule.source?.evidenceReceiptId || null,
     policySha256,
     projectionSha256,
-  }).slice(0, 24)}`;
+    legacyPrefix: hasLegacyPrefix(
+      receipt.receiptId,
+      LEGACY_DISCLOSURE_RECEIPT_PREFIX,
+    ),
+  });
   const receiptMatches =
     receipt.receiptId === expectedReceiptId &&
     receipt.sourceEvidenceReceiptId === capsule.source?.evidenceReceiptId &&

@@ -1,7 +1,7 @@
 const demoCheckpoints = [
   {
     schemaVersion: 2,
-    id: "vt_204718_a91f3c",
+    id: "po_204718_a91f3c",
     status: "completed",
     createdAt: "2026-09-01T20:47:18.000Z",
     prompt: { text: "Change the primary button color to electric violet" },
@@ -127,7 +127,7 @@ const demoCheckpoints = [
   },
   {
     schemaVersion: 2,
-    id: "vt_203229_8d0c42",
+    id: "po_203229_8d0c42",
     status: "completed",
     createdAt: "2026-09-01T20:32:29.000Z",
     prompt: { text: "Make the hero section feel cinematic and premium" },
@@ -229,7 +229,7 @@ const demoCheckpoints = [
   },
   {
     schemaVersion: 2,
-    id: "vt_201104_4b23a8",
+    id: "po_201104_4b23a8",
     status: "completed",
     createdAt: "2026-09-01T20:11:04.000Z",
     prompt: { text: "Shorten the empty-state copy" },
@@ -294,7 +294,7 @@ const demoCheckpoints = [
   },
 ];
 
-const report = window.__VIBETRACE_REPORT__;
+const report = window.__PATCHOATH_REPORT__ || window.__VIBETRACE_REPORT__;
 const isReportMode = Boolean(report);
 const checkpoints = report?.checkpoints?.length
   ? report.checkpoints
@@ -340,7 +340,7 @@ const elements = Object.fromEntries(
 );
 for (const [name, element] of Object.entries(elements)) {
   if (!element)
-    throw new Error(`Missing required VibeTrace UI element: ${name}`);
+    throw new Error(`Missing required PatchOath UI element: ${name}`);
 }
 const orbitPositions = [
   [50, 9],
@@ -426,7 +426,7 @@ function demoShot(variant, state) {
       : "Build products faster.";
   const subtitle = copy
     ? after
-      ? "Create your first trace to begin."
+      ? "Create your first checkpoint to begin."
       : "Once you have created an item, it will appear in this area for you to review."
     : after
       ? "From a fleeting prompt to an evidence-backed change."
@@ -434,7 +434,7 @@ function demoShot(variant, state) {
   return `<div class="demo-shot ${escapeHtml(variant)} ${state}">
     <nav><span class="demo-logo">NORTH/STAR</span><div><i></i><i></i><button>Open app</button></div></nav>
     <div class="demo-grid" aria-hidden="true"></div>
-    <section><small>${after ? "THE NEW CREATIVE SYSTEM" : "DESIGN. BUILD. SHIP."}</small><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}</p><button>${copy ? "Create trace" : after ? "Start building →" : "Explore platform"}</button></section>
+    <section><small>${after ? "THE NEW CREATIVE SYSTEM" : "DESIGN. BUILD. SHIP."}</small><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}</p><button>${copy ? "Create checkpoint" : after ? "Start building →" : "Explore platform"}</button></section>
     <div class="demo-orb"></div>
   </div>`;
 }
@@ -610,7 +610,10 @@ function render() {
   if (!checkpoint) return;
   renderTimeline();
   elements.evidenceTitle.textContent = checkpoint.prompt.text;
-  elements.checkpointId.textContent = checkpoint.id.replace(/^vt_/u, "#");
+  elements.checkpointId.textContent = checkpoint.id.replace(
+    /^(?:po|vt)_/u,
+    "#",
+  );
   renderVisual(checkpoint);
   renderImpact(checkpoint);
 }
@@ -654,7 +657,7 @@ elements.copyId.addEventListener("click", () =>
 );
 elements.copyCommand.addEventListener("click", () =>
   copyText(
-    'vibetrace checkpoint --prompt "Make the hero cinematic" --url http://localhost:3000',
+    'patchoath checkpoint --prompt "Make the hero cinematic" --url http://localhost:3000',
     "Command copied",
   ),
 );

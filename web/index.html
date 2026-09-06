@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="VibeTrace separates prompt intent, execution authority, observed AI code changes, review decisions, and evidence-disclosure boundaries."
+      content="PatchOath separates prompt intent, explicit change authority, observed AI code effects, human review, and disclosure boundaries."
     />
     <meta name="theme-color" content="#08090c" />
-    <title>VibeTrace — Evidence for AI code changes</title>
+    <title>PatchOath — Make every AI patch prove it stayed in scope</title>
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./brand.css" />
     <link rel="stylesheet" href="./contract.css" />
     <link rel="stylesheet" href="./review.css" />
     <link rel="stylesheet" href="./historical-review.css" />
@@ -19,18 +20,21 @@
     <div class="ambient ambient-two" aria-hidden="true"></div>
 
     <header class="topbar">
-      <a class="wordmark" href="#main" aria-label="VibeTrace home">
+      <a class="wordmark" href="#main" aria-label="PatchOath home">
         <svg class="mark" viewBox="0 0 38 38" aria-hidden="true">
-          <path d="M8 19a11 11 0 1 1 3.2 7.8" />
-          <path d="M11 31v-7h7" />
-          <circle cx="19" cy="19" r="3.2" />
+          <path
+            class="seal-outline"
+            d="M19 4.8 31 11.7v13.8L19 32.4 7 25.5V11.7L19 4.8Z"
+          />
+          <path class="seal-outline" d="m12.8 19.4 4 4 8.6-9" />
+          <circle class="seal-core" cx="19" cy="4.8" r="1.7" />
         </svg>
-        <span>VibeTrace</span>
-        <span class="version">v0.2</span>
+        <span>PatchOath</span>
+        <span class="version">v0.3</span>
       </a>
-      <p class="tagline">Evidence for AI code changes.</p>
+      <p class="tagline">Proof that AI changes stayed in scope.</p>
       <div class="top-actions">
-        <span class="local-status"><i></i> local evidence</span>
+        <span class="local-status"><i></i> local-first evidence</span>
         <a
           href="https://github.com/feifeing/vibetrace"
           target="_blank"
@@ -44,19 +48,27 @@
     <main id="main" class="page-shell">
       <section class="intro" aria-labelledby="page-title">
         <div>
-          <p class="eyebrow"><span></span> SESSION 07 · CHANGE EVIDENCE</p>
+          <p class="eyebrow"><span></span> PATCH REVIEW · EVIDENCE-BOUND</p>
           <h1 id="page-title">
-            Know what was asked. Bound what was allowed. Review what changed.
+            Declare the boundary. Inspect the patch.
+            <span class="accent">Prove what crossed it.</span>
           </h1>
         </div>
-        <p class="intro-copy">
-          VibeTrace keeps inferred intent, explicit execution authority,
-          observed effects, review decisions, and evidence-disclosure authority
-          separate — so each boundary can be inspected instead of implied.
-        </p>
+        <div>
+          <p class="intro-copy">
+            PatchOath keeps <strong>what you asked</strong>,
+            <strong>what you explicitly allowed</strong>, what the agent
+            actually changed, the human review outcome, and what may be
+            disclosed as separate evidence layers.
+          </p>
+          <p class="oath-note">
+            A prompt is context. A Change Contract is authority. Git is
+            evidence.
+          </p>
+        </div>
       </section>
 
-      <section class="trace-flow" aria-label="VibeTrace evidence chain">
+      <section class="trace-flow" aria-label="PatchOath evidence chain">
         <span class="flow-step complete">01 <b>Intent</b></span
         ><i aria-hidden="true"></i>
         <span class="flow-step complete">02 <b>Authority</b></span
@@ -68,11 +80,11 @@
         <span class="flow-step guarded">05 <b>Disclosure</b></span>
       </section>
 
-      <section class="workspace" aria-label="VibeTrace session report">
+      <section class="workspace" aria-label="PatchOath session report">
         <aside class="timeline-panel panel">
           <div class="panel-heading">
             <div>
-              <p class="section-label">PROMPT TIMELINE</p>
+              <p class="section-label">PATCH TIMELINE</p>
               <h2>Current session</h2>
             </div>
             <span id="checkpointCount" class="count-pill">0</span>
@@ -227,10 +239,10 @@
         aria-label="Review and disclosure evidence"
       ></section>
 
-      <section class="command-strip" aria-label="VibeTrace quick start">
+      <section class="command-strip" aria-label="PatchOath quick start">
         <span class="terminal-dot">›_</span>
         <code
-          >vibetrace checkpoint --prompt "Change the button color" --allow
+          >patchoath checkpoint --prompt "Change the button color" --allow
           "src/components/**,src/styles/**" --deny "src/auth/**" --max-files
           3</code
         >

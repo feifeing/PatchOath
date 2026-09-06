@@ -43,6 +43,7 @@ test("a small visual prompt exposes sensitive intent mismatch", () => {
   assert.ok(
     analysis.risk.factors.some((factor) => factor.id === "intent-mismatch"),
   );
+  assert.equal(analysis.risk.model, "patchoath-evidence-risk-v2");
   assert.ok(analysis.blastRadius.score >= 50);
 });
 

@@ -1,6 +1,6 @@
 # Review Control Plane
 
-VibeTrace separates five stages that are easy to blur together in AI-assisted coding:
+PatchOath separates five stages that are easy to blur together in AI-assisted coding:
 
 ```text
 Intent → Authority → Effect → Review → Disclosure
@@ -8,13 +8,13 @@ Intent → Authority → Effect → Review → Disclosure
 
 The stages are deliberately different kinds of evidence.
 
-| Stage      | Question                                                           | Evidence type                           |
-| ---------- | ------------------------------------------------------------------ | --------------------------------------- |
-| Intent     | What did the prompt appear to ask for?                             | Transparent heuristic context           |
-| Authority  | What did the developer explicitly allow?                           | User-declared Change Contract           |
-| Effect     | What actually changed?                                             | Git objects + optional visual evidence  |
-| Review     | What narrow contract delta would cover this exact observed effect? | Evidence-bound proposal, never approval |
-| Disclosure | What evidence is permitted to leave the local review context?      | Explicit Disclosure Policy + Capsule    |
+| Stage      | Question                                                       | Evidence type                                 |
+| ---------- | -------------------------------------------------------------- | --------------------------------------------- |
+| Intent     | What did the prompt appear to ask for?                         | Transparent heuristic context                 |
+| Authority  | What did the developer explicitly allow?                       | User-declared Change Contract                 |
+| Effect     | What actually changed?                                         | Git objects + optional visual evidence        |
+| Review     | What does this exact historical effect imply for human review? | Mechanical delta + separate historical review |
+| Disclosure | What evidence is permitted to leave the local review context?  | Explicit Disclosure Policy + Evidence Capsule |
 
 ## Why add a review plane?
 
@@ -22,7 +22,7 @@ Authorization Drift is a useful stop signal, but it does not answer the next rev
 
 > If a human really intends to accept this exact already-observed effect, what narrowly expressible change to the original contract would be sufficient?
 
-`vibetrace contract-delta` answers that question inside an intentionally restricted proposal vocabulary.
+`patchoath contract-delta` answers the **mechanical** part of that question inside an intentionally restricted proposal vocabulary.
 
 It may propose:
 
@@ -40,11 +40,29 @@ It never proposes:
 
 A protected-path or protected-surface violation therefore remains a human-review blocker even when a mechanical delta can be computed for other parts of the same change.
 
+## Mechanical proposal and human review are different records
+
+PatchOath deliberately does **not** treat a mechanically sufficient Contract Delta as a human decision.
+
+The two layers are separate:
+
+```text
+Contract Delta
+  “what narrow candidate would cover this exact observed effect?”
+
+Historical Effect Review
+  “what did a human record about this already-captured effect?”
+```
+
+`patchoath review --accept-effect` records only acceptance of that historical effect. It does not mutate the Change Contract or grant the coding agent authority for a future action.
+
+The Dashboard is read-only for this human-review layer. It can display an existing record and its integrity state, but it does not provide an approval button that can silently change authority.
+
 ## The observed effect is recomputed
 
 The report does not use cached `analysis.files` as authority for Contract Delta.
 
-When a standalone report is generated, VibeTrace:
+When a standalone report is generated, PatchOath:
 
 1. recomputes the checkpoint's Evidence Receipt and refuses derived review proposals if that receipt no longer matches;
 2. reads the receipt-bound before/after Git object IDs;
@@ -58,9 +76,9 @@ The Dashboard therefore reports verification scope precisely:
 
 - **Source receipt verified** means the deterministic Evidence Receipt currently recomputes;
 - **Git effect recomputed** means the before/after object pair was diffed again for the Review Plane;
-- neither statement means every check performed by `vibetrace verify` necessarily ran inside report generation.
+- neither statement means every check performed by `patchoath verify` necessarily ran inside report generation.
 
-For example, `vibetrace verify` additionally checks referenced private refs and available visual artifact bytes. The Review Plane does not collapse those separate checks into a generic “trusted” badge.
+For example, `patchoath verify` additionally checks referenced private refs and available visual artifact bytes. The Review Plane does not collapse those separate checks into a generic “trusted” badge.
 
 ## Counterfactual replay is not approval
 
@@ -71,11 +89,11 @@ original contract + observed effect → violated
 candidate contract + same effect   → compliant
 ```
 
-When the second evaluation is compliant, VibeTrace can label the restricted proposal `proposal-ready`.
+When the second evaluation is compliant, PatchOath can label the restricted proposal `proposal-ready`.
 
 That means only:
 
-> the candidate is sufficient for this exact historical effect inside VibeTrace's restricted proposal language.
+> the candidate is sufficient for this exact historical effect inside PatchOath's restricted proposal language.
 
 It does **not** mean:
 
@@ -85,11 +103,11 @@ It does **not** mean:
 - the agent should receive this authority in the future; or
 - the proposal is a globally minimal access-control policy.
 
-The Proposal Receipt (`vtcd_*`) is likewise an integrity record over the source receipt, original contract, recomputed effect, delta, blockers, and replay result. It is not an approval token.
+The Proposal Receipt (`pocd_*`) is likewise an integrity record over the source receipt, original contract, recomputed effect, delta, blockers, and replay result. It is not an approval token.
 
 ## The browser report is full local evidence
 
-A VibeTrace standalone browser report is designed for local review. It can contain sensitive material such as:
+A PatchOath standalone browser report is designed for local review. It can contain sensitive material such as:
 
 - full prompt text;
 - changed file paths;
@@ -107,7 +125,7 @@ The Dashboard intentionally says this explicitly rather than presenting a “sha
 Use a separate minimum-disclosure Capsule when evidence needs to leave the local review context:
 
 ```bash
-vibetrace capsule <checkpoint>
+patchoath capsule <checkpoint>
 ```
 
 By default the Capsule omits:
@@ -122,7 +140,7 @@ visualArtifactBytes
 
 Expanded disclosure requires explicit CLI flags. Capsule construction uses an allowlist projection rather than cloning a checkpoint and attempting to redact it afterward, so newly added checkpoint fields do not become shareable automatically.
 
-The Disclosure Receipt (`vtd_*`) binds the source Evidence Receipt, disclosure-policy hash, and disclosed projection hash. It is not encryption, anonymity, a digital signature, or a zero-knowledge proof.
+The Disclosure Receipt (`pod_*`) binds the source Evidence Receipt, disclosure-policy hash, and disclosed projection hash. It is not encryption, anonymity, a digital signature, or a zero-knowledge proof.
 
 ## Two independent authority boundaries
 
@@ -132,7 +150,7 @@ The resulting architecture has two separate authority questions:
 Execution authority
   Change Contract
       ↓
-  Did the agent's effect cross the declared coding boundary?
+  Did the observed effect cross the declared coding boundary?
 
 Disclosure authority
   Disclosure Policy
@@ -146,17 +164,18 @@ Keeping them separate is more important than giving either one a clever name: a 
 
 ## Non-novelty boundary
 
-Least privilege, step-up authorization, access-control policy repair, evidence packs, selective disclosure, cryptographic hashes, receipts, and signed attestations all have substantial prior art.
+Least privilege, step-up authorization, access-control policy repair, evidence packs, selective disclosure, cryptographic hashes, receipts, signed attestations, and human approval logs all have substantial prior art.
 
-VibeTrace does not claim those primitives as inventions.
+PatchOath does not claim those primitives as inventions.
 
-The project-specific design being explored is their composition into one local AI-code-change evidence workflow in which:
+The project-specific design being developed is their disciplined composition into one local AI-code-change evidence workflow in which:
 
 - inferred intent is not permission;
 - execution authority is explicit;
 - observed effect is recomputed from Git evidence for review proposals;
 - protected boundaries are never automatically relaxed from observed effect alone;
-- counterfactual sufficiency is separated from human approval; and
+- counterfactual sufficiency is separated from human approval;
+- a historical human review cannot silently become future execution authority; and
 - evidence-disclosure authority is modeled separately from execution authority.
 
 See [Related work and differentiation boundary](related-work.md) for the broader originality boundary.

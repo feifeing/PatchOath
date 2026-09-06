@@ -270,7 +270,7 @@ export function analyzeChangeSet({
     risk: {
       score: riskScore,
       level: levelForRisk(riskScore),
-      model: "vibetrace-evidence-risk-v2",
+      model: "patchoath-evidence-risk-v2",
       factors: factors.sort((a, b) => b.points - a.points),
       note: "This is a deterministic review heuristic, not a probability of failure.",
     },

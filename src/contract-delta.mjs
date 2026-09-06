@@ -3,7 +3,7 @@ import { listCheckpoints } from "./core/store.mjs";
 import { collectCommitDiff } from "./git/diff.mjs";
 import { findRepositoryRoot } from "./git/git.mjs";
 
-const HELP = `vibetrace contract-delta [checkpoint] [--json]
+const HELP = `patchoath contract-delta [checkpoint] [--json]
 
 Compute the restricted local Change-Contract delta that would be sufficient for the selected checkpoint's already-observed effect, without applying or persisting any permission change.
 
@@ -48,7 +48,7 @@ function resolveCheckpoint(checkpoints, token) {
 
 function printHuman(stdout, result) {
   stdout.write("\n");
-  stdout.write(`✦ VibeTrace contract delta ${result.checkpointId}\n`);
+  stdout.write(`✦ PatchOath contract delta ${result.checkpointId}\n`);
   stdout.write(`  status     ${result.status}\n`);
   if (result.status === "not-applicable") {
     stdout.write(`  reason     ${result.reason}\n`);
@@ -75,7 +75,7 @@ function printHuman(stdout, result) {
   }
   stdout.write(`  receipt    ${result.proposalReceipt.receiptId}\n`);
   stdout.write(
-    "  note       proposal only; VibeTrace does not apply or persist authorization changes\n",
+    "  note       proposal only; PatchOath does not apply or persist authorization changes\n",
   );
 }
 

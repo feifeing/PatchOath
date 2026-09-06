@@ -38,7 +38,7 @@ function baseAnalysis() {
     risk: {
       score: 18,
       level: "low",
-      model: "vibetrace-evidence-risk-v2",
+      model: "patchoath-evidence-risk-v2",
       factors: [],
     },
   };
@@ -47,7 +47,7 @@ function baseAnalysis() {
 function buildCheckpoint({ root, sessionId, before, after, authorization }) {
   const checkpoint = {
     schemaVersion: 2,
-    id: "vt_contract_delta_fixture",
+    id: "po_contract_delta_fixture",
     sessionId,
     status: "completed",
     createdAt: "2026-09-03T01:00:00.000Z",
@@ -130,7 +130,7 @@ test("CLI recomputes observed effect from Git objects instead of cached analysis
   assert.equal(result.delta.budgets.maxLines.to, 2);
   assert.equal(result.delta.budgets.maxModules.to, 2);
   assert.equal(result.counterfactual.status, "compliant");
-  assert.match(result.proposalReceipt.receiptId, /^vtcd_[a-f0-9]{24}$/u);
+  assert.match(result.proposalReceipt.receiptId, /^pocd_[a-f0-9]{24}$/u);
 });
 
 test("protected surfaces are never proposed as automatic relaxations", async () => {

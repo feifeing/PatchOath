@@ -5,13 +5,14 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
-const cli = resolve("bin/vibetrace.mjs");
+const cli = resolve("bin/patchoath.mjs");
 test.setTimeout(60_000);
 
 function run(root, args) {
   return execFileSync(process.execPath, [cli, ...args], {
     cwd: root,
     encoding: "utf8",
+    env: { ...process.env, NO_COLOR: "1" },
   });
 }
 
@@ -38,8 +39,8 @@ async function waitForServer(url) {
   throw new Error(`Test server did not start: ${url}`);
 }
 
-test("the CLI captures and compares a real before/after page", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibetrace-e2e-"));
+test("PatchOath captures and compares a real before/after page", async () => {
+  const root = await mkdtemp(join(tmpdir(), "patchoath-e2e-"));
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
   const serverSource = `import {createServer} from 'node:http';import {readFile} from 'node:fs/promises';createServer(async(_q,r)=>{r.setHeader('content-type','text/html');r.end(await readFile(new URL('./index.html',import.meta.url)))}).listen(${port},'127.0.0.1');`;
@@ -50,8 +51,8 @@ test("the CLI captures and compares a real before/after page", async () => {
     "utf8",
   );
   execFileSync("git", ["init", "-b", "main"], { cwd: root });
-  execFileSync("git", ["config", "user.name", "VibeTrace E2E"], { cwd: root });
-  execFileSync("git", ["config", "user.email", "e2e@vibetrace.local"], {
+  execFileSync("git", ["config", "user.name", "PatchOath E2E"], { cwd: root });
+  execFileSync("git", ["config", "user.email", "e2e@patchoath.local"], {
     cwd: root,
   });
   execFileSync("git", ["add", "."], { cwd: root });
@@ -80,11 +81,15 @@ test("the CLI captures and compares a real before/after page", async () => {
       "utf8",
     );
     run(root, ["checkpoint", "--finish"]);
-    const checkpointDirectory = join(root, ".vibetrace", "checkpoints");
+    const checkpointDirectory = join(root, ".patchoath", "checkpoints");
     const checkpointNames = await readdir(checkpointDirectory);
     const checkpoint = JSON.parse(
       await readFile(join(checkpointDirectory, checkpointNames[0]), "utf8"),
     );
+    expect(checkpoint.id).toMatch(/^po_/u);
+    expect(checkpoint.receipt.receiptId).toMatch(/^poe_[a-f0-9]{24}$/u);
+    expect(checkpoint.before.ref).toMatch(/^refs\/patchoath\//u);
+    expect(checkpoint.after.ref).toMatch(/^refs\/patchoath\//u);
     expect(checkpoint.analysis.visual.pixel.differenceRatio).toBeGreaterThan(
       0.5,
     );

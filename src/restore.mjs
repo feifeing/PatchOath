@@ -2,14 +2,14 @@ import { listCheckpoints, loadStore } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 import { applyRestore, inspectRestore } from "./git/restore.mjs";
 
-const HELP = `VibeTrace restore — safely preview or restore a completed checkpoint
+const HELP = `PatchOath restore — safely preview or restore a completed checkpoint
 
 Usage:
-  vibetrace restore [checkpoint]
-  vibetrace restore [checkpoint] --apply
-  vibetrace restore [checkpoint] --json
+  patchoath restore [checkpoint]
+  patchoath restore [checkpoint] --apply
+  patchoath restore [checkpoint] --json
 
-Restore is dry-run by default. VibeTrace only applies a restore when the current worktree
+Restore is dry-run by default. PatchOath only applies a restore when the current worktree
 still matches the checkpoint after-state exactly. If later edits are detected, restore is blocked.
 The real Git index and HEAD are not rewritten.`;
 
@@ -57,33 +57,38 @@ function fileSummary(files) {
   }));
 }
 
-function printPlan(plan) {
-  console.log("");
-  console.log(`✦ VibeTrace guarded restore ${plan.checkpointId}`);
-  console.log(`  status       ${plan.canApply ? "READY" : "BLOCKED BY DRIFT"}`);
-  console.log(
-    `  drift        ${plan.drift.length} file(s) since checkpoint completion`,
+function printPlan(plan, stdout) {
+  stdout.write("\n");
+  stdout.write(`✦ PatchOath guarded restore ${plan.checkpointId}\n`);
+  stdout.write(
+    `  status       ${plan.canApply ? "READY" : "BLOCKED BY DRIFT"}\n`,
   );
-  console.log(`  restore      ${plan.restore.length} file(s) would change`);
+  stdout.write(
+    `  drift        ${plan.drift.length} file(s) since checkpoint completion\n`,
+  );
+  stdout.write(`  restore      ${plan.restore.length} file(s) would change\n`);
   for (const file of plan.restore) {
     const rename = file.oldPath ? `${file.oldPath} → ` : "";
-    console.log(`  - ${rename}${file.path}`);
+    stdout.write(`  - ${rename}${file.path}\n`);
   }
   if (!plan.canApply) {
-    console.log("  current worktree differs from the checkpoint after-state:");
-    for (const file of plan.drift) console.log(`  ! ${file.path}`);
+    stdout.write(
+      "  current worktree differs from the checkpoint after-state:\n",
+    );
+    for (const file of plan.drift) stdout.write(`  ! ${file.path}\n`);
   }
-  console.log("");
+  stdout.write("\n");
 }
 
-export async function runRestore(argv) {
+export async function runRestore(argv, io = {}) {
+  const stdout = io.stdout || process.stdout;
   const options = parse(argv);
   if (options.help) {
-    console.log(HELP);
+    stdout.write(`${HELP}\n`);
     return 0;
   }
 
-  const root = findRepositoryRoot(process.cwd());
+  const root = findRepositoryRoot(io.cwd || process.cwd());
   const { state } = await loadStore(root);
   if (state.activeCheckpointId) {
     throw new Error(
@@ -107,21 +112,19 @@ export async function runRestore(argv) {
   };
 
   if (!options.apply) {
-    if (options.json) console.log(JSON.stringify(result, null, 2));
+    if (options.json) stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     else {
-      printPlan(plan);
-      console.log(
-        plan.canApply
-          ? "dry-run only; run the same command with --apply to restore"
-          : "restore is blocked until the later worktree drift is resolved",
+      printPlan(plan, stdout);
+      stdout.write(
+        `${plan.canApply ? "dry-run only; run the same command with --apply to restore" : "restore is blocked until the later worktree drift is resolved"}\n`,
       );
     }
     return plan.canApply ? 0 : 2;
   }
 
   if (!plan.canApply) {
-    if (options.json) console.log(JSON.stringify(result, null, 2));
-    else printPlan(plan);
+    if (options.json) stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    else printPlan(plan, stdout);
     return 2;
   }
 
@@ -140,11 +143,11 @@ export async function runRestore(argv) {
     applied: true,
     verification: applied.verification,
   };
-  if (options.json) console.log(JSON.stringify(output, null, 2));
+  if (options.json) stdout.write(`${JSON.stringify(output, null, 2)}\n`);
   else {
-    printPlan(plan);
-    console.log(
-      "restored worktree to the checkpoint before-state; HEAD and index unchanged",
+    printPlan(plan, stdout);
+    stdout.write(
+      "restored worktree to the checkpoint before-state; HEAD and index unchanged\n",
     );
   }
   return 0;

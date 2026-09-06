@@ -1,6 +1,6 @@
 # Historical Effect Review Records
 
-`vibetrace review` records a human review outcome for an **already-observed, already-recorded** checkpoint effect.
+`patchoath review` records a human review outcome for an **already-observed, already-recorded** checkpoint effect.
 
 It exists to keep one important distinction explicit:
 
@@ -10,48 +10,50 @@ accept this historical effect
 grant the coding agent future authority
 ```
 
-The feature deliberately avoids the broader term “Decision Receipt”. Approval/decision receipts, human-in-the-loop records, signed approval chains, and policy-decision logs already have substantial prior art across AI governance and software-change systems. VibeTrace does not claim to invent those concepts.
+The feature deliberately avoids the broader term “Decision Receipt”. Approval/decision receipts, human-in-the-loop records, signed approval chains, and policy-decision logs already have substantial prior art across AI governance and software-change systems. PatchOath does not claim to invent those concepts.
 
 ## Create a review
 
 ```bash
-vibetrace review --accept-effect
-vibetrace review vt_204718_a91f3c --reject-effect
-vibetrace review --needs-follow-up --note "Security review required"
+patchoath review --accept-effect
+patchoath review po_204718_a91f3c --reject-effect
+patchoath review --needs-follow-up --note "Security review required"
 ```
 
 Optional reviewer labels are local assertions only:
 
 ```bash
-vibetrace review \
+patchoath review \
   --accept-effect \
   --reviewer "Maintainer A" \
   --note "Accepted for this checkpoint only"
 ```
 
-VibeTrace records the label but does **not** authenticate that identity.
+PatchOath records the label but does **not** authenticate that identity.
 
 ## Verification prerequisite
 
-Before VibeTrace creates a review record, the source checkpoint must pass the same verification path used by:
+Before PatchOath creates a review record, the source checkpoint must pass the same verification path used by:
 
 ```bash
-vibetrace verify
+patchoath verify
 ```
 
 That includes the deterministic Evidence Receipt and, when present, the referenced Git evidence and visual artifact bytes.
 
-If the source evidence no longer verifies, VibeTrace refuses to create a new review record. This prevents a modified or incomplete checkpoint from being retrospectively legitimized through the review command.
+If the source evidence no longer verifies, PatchOath refuses to create a new review record. This prevents a modified or incomplete checkpoint from being retrospectively legitimized through the review command.
 
 ## Separate storage
 
-Review records live under:
+Fresh PatchOath repositories store review records under:
 
 ```text
-.vibetrace/reviews/
+.patchoath/reviews/
 ```
 
-They are intentionally stored **outside** checkpoint JSON.
+A repository that already contains the historical `.vibetrace/` store may continue using that store in compatibility mode so existing evidence is not silently moved or rewritten.
+
+Review records are intentionally stored **outside** checkpoint JSON.
 
 Recording a review must not rewrite:
 
@@ -97,18 +99,18 @@ optional claimed reviewer label
 explicit no-future-authority boundary
 ```
 
-It receives an ID of the form:
+New records receive an ID of the form:
 
 ```text
-vrr_<sha256-derived-id>
+por_<sha256-derived-id>
 ```
 
-The hash is an integrity mechanism, not a digital signature or identity proof.
+Historical `vrr_*` records remain verifiable for compatibility. The hash is an integrity mechanism, not a digital signature or identity proof.
 
 Verify a record with:
 
 ```bash
-vibetrace review --verify vrr_...
+patchoath review --verify por_...
 ```
 
 Verification checks both the review record integrity and the current source checkpoint evidence. Tampering with the review record or invalidating the source checkpoint causes verification to fail.
@@ -116,8 +118,8 @@ Verification checks both the review record integrity and the current source chec
 ## List records
 
 ```bash
-vibetrace review --list
-vibetrace review vt_204718_a91f3c --list --json
+patchoath review --list
+patchoath review po_204718_a91f3c --list --json
 ```
 
 ## Authority invariant

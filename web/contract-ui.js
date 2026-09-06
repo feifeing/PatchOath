@@ -1,11 +1,11 @@
-const reportData = window.__VIBETRACE_REPORT__;
+const reportData = window.__PATCHOATH_REPORT__ || window.__VIBETRACE_REPORT__;
 const checkpointId = document.getElementById("checkpointId");
 const impactPanel = document.querySelector(".impact-panel");
 const riskSection = document.querySelector(".risk-section");
 
 if (!checkpointId || !impactPanel || !riskSection) {
   throw new Error(
-    "VibeTrace authorization UI could not find its host elements.",
+    "PatchOath authorization UI could not find its host elements.",
   );
 }
 
@@ -31,7 +31,7 @@ const demoAuthorization = {
         ],
       },
     },
-    receipt: { receiptId: "vtr_4f71a9c83e16d52a3f308cf0" },
+    receipt: { receiptId: "poe_4f71a9c83e16d52a3f308cf0" },
   },
   "203229_8d0c42": {
     authorization: {
@@ -49,7 +49,7 @@ const demoAuthorization = {
         violations: [],
       },
     },
-    receipt: { receiptId: "vtr_16bbac216de20b8c011197d2" },
+    receipt: { receiptId: "poe_16bbac216de20b8c011197d2" },
   },
   "201104_4b23a8": {
     authorization: null,
@@ -60,7 +60,7 @@ const demoAuthorization = {
         violations: [],
       },
     },
-    receipt: { receiptId: "vtr_013e7f2c766593b63dc1d3ae" },
+    receipt: { receiptId: "poe_013e7f2c766593b63dc1d3ae" },
   },
 };
 
@@ -87,7 +87,7 @@ function currentCheckpoint() {
   const displayed = displayedCheckpointKey();
   if (reportData?.checkpoints?.length) {
     return reportData.checkpoints.find(
-      (checkpoint) => checkpoint.id.replace(/^vt_/u, "") === displayed,
+      (checkpoint) => checkpoint.id.replace(/^(?:po|vt)_/u, "") === displayed,
     );
   }
   return demoAuthorization[displayed] || demoAuthorization["204718_a91f3c"];
@@ -177,7 +177,7 @@ function replaceQuickStartCopy() {
   oldButton.replaceWith(replacement);
   replacement.addEventListener("click", async () => {
     const command =
-      'vibetrace checkpoint --prompt "Change the button color" --allow "src/components/**,src/styles/**" --deny "src/auth/**" --max-files 3';
+      'patchoath checkpoint --prompt "Change the button color" --allow "src/components/**,src/styles/**" --deny "src/auth/**" --max-files 3';
     try {
       await navigator.clipboard.writeText(command);
       replacement.textContent = "Copied";

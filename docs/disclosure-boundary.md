@@ -1,6 +1,6 @@
 # Disclosure boundaries and Evidence Capsules
 
-VibeTrace treats two different kinds of authority as separate objects:
+PatchOath treats two different kinds of authority as separate objects:
 
 ```text
 Execution boundary   what a coding change is allowed to touch
@@ -13,12 +13,12 @@ This distinction matters because evidence collected for review can itself contai
 
 ## Evidence Capsule
 
-`vibetrace capsule` creates a local, portable JSON projection of a completed checkpoint.
+`patchoath capsule` creates a local, portable JSON projection of a completed checkpoint.
 
 The default policy is deny-by-default for high-disclosure fields:
 
 ```bash
-vibetrace capsule
+patchoath capsule
 ```
 
 The minimum-disclosure capsule keeps structural review evidence such as:
@@ -45,22 +45,24 @@ screenshot bytes
 Expanded disclosure must be explicit:
 
 ```bash
-vibetrace capsule --include-prompt
-vibetrace capsule --include-paths
-vibetrace capsule --include-contract
+patchoath capsule --include-prompt
+patchoath capsule --include-paths
+patchoath capsule --include-contract
 ```
 
 These flags enlarge the disclosure surface; they do not make the additional data safe to publish. Review the resulting capsule before sharing it.
 
 ## Disclosure Receipt
 
-A capsule receives a deterministic `vtd_*` **Disclosure Receipt** derived from:
+A new capsule receives a deterministic `pod_*` **Disclosure Receipt** derived from:
 
 ```text
 source Evidence Receipt ID
 + Disclosure Policy hash
 + disclosed projection hash
 ```
+
+Historical `vtd_*` receipts remain verifiable when reading legacy evidence.
 
 This creates a compact integrity link between the full local evidence record and the particular projection chosen for sharing.
 
@@ -69,12 +71,14 @@ The current receipt is not a signature and does not authenticate the person or m
 Verify a capsule without loading its original checkpoint:
 
 ```bash
-vibetrace capsule --verify .vibetrace/capsules/<checkpoint>.capsule.json
+patchoath capsule --verify .patchoath/capsules/<checkpoint>.capsule.json
 ```
+
+Repositories already using the historical `.vibetrace/` evidence store may continue to keep capsules there in compatibility mode; PatchOath does not silently move or rewrite that evidence.
 
 ## Disclosure Drift
 
-VibeTrace uses **Disclosure Drift** for a narrow condition:
+PatchOath uses **Disclosure Drift** for a narrow condition:
 
 > the artifact contains a class of data that its own Disclosure Policy says must be omitted.
 
@@ -84,7 +88,7 @@ The verifier checks the policy independently of the Disclosure Receipt so two fa
 
 ```text
 disclosure-drift             forbidden field class is present
- disclosure-receipt-mismatch disclosed projection or policy changed
+disclosure-receipt-mismatch  disclosed projection or policy changed
 ```
 
 This is intentionally analogous to, but separate from, Authorization Drift:
@@ -108,11 +112,11 @@ Minimum disclosure reduces accidental exposure; it does not make a capsule anony
 
 Hashes, timestamps, risk summaries, budgets, violation classes, and other structural metadata may still reveal information. Hashes of low-entropy values can sometimes be guessed by dictionary attack. Do not treat the current capsule format as a zero-knowledge proof or a cryptographic confidentiality system.
 
-A future selective-opening layer may use salted commitments or stronger privacy-preserving proofs, but those mechanisms should be introduced only with an explicit threat model and without relabeling standard cryptographic primitives as VibeTrace inventions.
+A future selective-opening layer may use salted commitments or stronger privacy-preserving proofs, but those mechanisms should be introduced only with an explicit threat model and without relabeling standard cryptographic primitives as PatchOath inventions.
 
 ## Related-work boundary
 
-Evidence packs, selective disclosure, cryptographic commitments, audit trails, and policy-based redaction all have substantial prior art. VibeTrace does not claim to have invented those primitives.
+Evidence packs, selective disclosure, cryptographic commitments, audit trails, and policy-based redaction all have substantial prior art. PatchOath does not claim to have invented those primitives.
 
 The project-specific design being explored here is the **dual-boundary workflow** for AI-assisted code changes:
 

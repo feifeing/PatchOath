@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRepository, git } from "../test-support/helpers.mjs";
 
-const cli = resolve("bin/vibetrace.mjs");
+const cli = resolve("bin/patchoath.mjs");
 
 function run(root, args) {
   return execFileSync(process.execPath, [cli, ...args], {
@@ -35,7 +35,7 @@ async function makeCheckpoint(root) {
   run(root, ["checkpoint", "--finish"]);
 }
 
-test("restore is dry-run by default and apply restores the exact before worktree", async (context) => {
+test("PatchOath restore is dry-run by default and apply restores the before worktree", async (context) => {
   const root = await createRepository();
   context.after(() => rm(root, { recursive: true, force: true }));
   await makeCheckpoint(root);
@@ -44,6 +44,7 @@ test("restore is dry-run by default and apply restores the exact before worktree
   const indexBefore = git(root, ["write-tree"]);
 
   const preview = run(root, ["restore"]);
+  assert.match(preview, /PatchOath guarded restore/u);
   assert.match(preview, /dry-run only/u);
   assert.equal(
     await readFile(join(root, "app.js"), "utf8"),
@@ -62,7 +63,7 @@ test("restore is dry-run by default and apply restores the exact before worktree
   assert.equal(git(root, ["write-tree"]), indexBefore);
 });
 
-test("restore blocks when the worktree drifted after checkpoint completion", async (context) => {
+test("PatchOath restore blocks when worktree drift appears after checkpoint completion", async (context) => {
   const root = await createRepository();
   context.after(() => rm(root, { recursive: true, force: true }));
   await makeCheckpoint(root);

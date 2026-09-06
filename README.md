@@ -1,61 +1,52 @@
 <p align="center">
-  <img src="docs/vibetrace-mark.svg" width="76" alt="VibeTrace mark" />
+  <img src="docs/patchoath-mark.svg" width="82" alt="PatchOath mark" />
 </p>
 
-<h1 align="center">VibeTrace</h1>
+<h1 align="center">PatchOath</h1>
 
-<p align="center"><strong>Time travel for vibe coding — with an authorization boundary.</strong></p>
-<p align="center">See what you asked, what you allowed, and what the coding agent actually changed.</p>
+<p align="center"><strong>Make every AI patch prove it stayed in scope.</strong></p>
+<p align="center">Declare what an AI coding change may touch. Capture what it actually touched. Review the difference with evidence instead of guesswork.</p>
 
 <p align="center">
   <a href="https://github.com/feifeing/vibetrace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/feifeing/vibetrace/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-c8ff66.svg" /></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-%3E%3D20-9a7cff.svg" />
+  <img alt="local first" src="https://img.shields.io/badge/evidence-local--first-11151a.svg" />
 </p>
 
-![VibeTrace dashboard showing prompt intent, authorization drift, visual evidence, and blast radius](docs/vibetrace-dashboard.png)
+---
 
-AI coding tools are very good at making changes. The harder problem is proving whether the resulting change stayed inside the boundary you intended to give them.
+You ask a coding agent to change one button.
 
-> “I asked for a button color. Why did the agent touch routing, auth, and twelve files?”
+It edits twelve files, crosses into auth and routing, changes dependencies, and still produces a working page.
 
-VibeTrace keeps three kinds of evidence separate:
+Git can show the diff. The harder question is:
+
+> **Was the agent actually allowed to make that much change?**
+
+PatchOath keeps five layers separate:
 
 ```text
-What you asked       → inferred intent
-What you authorized  → explicit change contract
-What happened        → Git + optional visual evidence
+Prompt intent
+    ↓ context, not permission
+Explicit authority
+    ↓ Change Contract
+Observed effect
+    ↓ Git + optional visual evidence
+Human review
+    ↓ historical effect only
+Disclosure
+    ↓ minimum necessary evidence
 ```
 
-That distinction matters. A prompt is context. A declared change contract is permission. The resulting Git and visual state is evidence.
+That separation is the point. **Intent is not authority. Review is not future permission. A local report is not automatically safe to share.**
 
-VibeTrace is local-first, agent-agnostic, Git-compatible, and deliberately explainable. It does not generate code, replace Git, or hide review decisions behind an opaque AI confidence score.
+## 30-second workflow
 
-## The core contribution
-
-Checkpoints, diffs, risk scoring, prompt history, path allowlists, visual regression, and blast-radius analysis all have prior art. VibeTrace does **not** claim those primitives as inventions.
-
-Its current technical contribution is a narrower evidence model:
-
-**Prompt Intent → Explicit Authorization → Observed Effect → Evidence Receipt → Verification**
-
-This lets VibeTrace answer two different questions independently:
-
-- **Intent mismatch:** did the observed change look broader than the prompt implied?
-- **Authorization drift:** did the observed change cross a boundary the user explicitly declared?
-
-Authorization drift is the stronger statement because it comes from a developer-declared rule, not natural-language inference.
-
-A completed checkpoint can also produce a deterministic SHA-256 **Evidence Receipt** binding the prompt hash, declared contract, Git before/after objects, analysis, and available visual hashes. Later, `vibetrace verify` recomputes that receipt and re-hashes local visual artifacts when they exist.
-
-The receipt is an integrity record. It is **not** an authorship signature, an identity proof, or a claim that the code is semantically correct.
-
-## A practical workflow
-
-Start a checkpoint before the coding agent edits:
+Start a checkpoint before the agent edits:
 
 ```bash
-vibetrace checkpoint \
+patchoath checkpoint \
   --prompt "Change the primary button color" \
   --allow "src/components/**,src/styles/**" \
   --deny "src/auth/**,src/router/**" \
@@ -63,361 +54,314 @@ vibetrace checkpoint \
   --max-lines 80
 ```
 
-Let the agent work, inspect the live impact, then finish:
+Let the agent work, then inspect and finish:
 
 ```bash
-vibetrace diff
-vibetrace checkpoint --finish
-vibetrace report --open
+patchoath diff
+patchoath checkpoint --finish
+patchoath verify
+patchoath report --open
 ```
 
-If the agent actually changes:
+A result can look like:
 
 ```text
-src/components/Button.tsx
-src/styles/globals.css
-src/auth/session.ts
-src/router/index.ts
-package.json
-...
+asked       Change the primary button color
+allowed     components + styles · ≤3 files · ≤80 lines
+observed    12 files · 6 modules · auth + routing touched
+intent      mismatch detected
+authority   contract violated
+receipt     poe_… verified
+review      human follow-up required
 ```
 
-VibeTrace can preserve a result such as:
+No language model is needed to decide that a file matching `src/auth/**` violated an explicit deny rule.
+
+## What PatchOath adds to a normal diff
+
+| Question                                                 | Evidence                                            |
+| -------------------------------------------------------- | --------------------------------------------------- |
+| What did I ask for?                                      | Prompt + transparent intent inference               |
+| What was actually permitted?                             | Explicit Change Contract                            |
+| What changed?                                            | Before/after Git objects + normalized file manifest |
+| Did the patch cross the declared boundary?               | Authorization Drift                                 |
+| Why is the change worth reviewing?                       | Explainable Blast Radius + risk factors             |
+| Can the captured evidence still be checked?              | Versioned Evidence Receipt                          |
+| Did a human accept this historical effect?               | Historical Effect Review Record                     |
+| What can I share without dumping the whole local report? | Minimum-disclosure Evidence Capsule                 |
+
+PatchOath is local-first, agent-agnostic, Git-compatible, and deliberately deterministic where a deterministic answer is possible.
+
+## The design boundary
+
+PatchOath does **not** claim that Git checkpoints, prompt histories, change-risk scoring, path allowlists, visual regression, blast-radius analysis, or review receipts are new ideas.
+
+Its design focus is the narrower composition and separation of:
 
 ```text
-Prompt intent        UI/styles · likely small
-Declared contract    components/styles allowed
-                     auth/router protected
-                     ≤ 3 files · ≤ 80 changed lines
-Observed effect      12 files · 6 modules
-Intent mismatch      detected
-Authorization drift  detected
-Evidence receipt     vtr_…
+inferred intent
+      ≠
+explicit execution authority
+      ↓
+recomputed observed effect
+      ↓
+evidence-bound contract drift
+      ↓
+historical human review
+      ≠
+future execution authority
+      ↓
+controlled disclosure
 ```
 
-No additional model is required to decide that `src/auth/**` violated an explicit `--deny` rule.
+See [`docs/related-work.md`](docs/related-work.md) for the explicit prior-art and non-novelty boundary.
 
-## Verify captured evidence
+## Evidence Receipts
 
-A receipt is only useful if it can be checked again later.
+Completed checkpoints receive a deterministic SHA-256 Evidence Receipt. Current v2 receipts bind:
+
+- prompt hash and source;
+- explicit Change Contract;
+- before/after Git object IDs;
+- normalized file-level effect manifest;
+- intent analysis;
+- contract compliance;
+- Blast Radius and risk analysis;
+- available visual-analysis and artifact hashes.
+
+Recompute it later:
 
 ```bash
-vibetrace verify
+patchoath verify
+patchoath verify po_… --json
 ```
 
-Verify a specific checkpoint or consume the result programmatically:
+A verified receipt means the evidence currently available to PatchOath is internally consistent with the evidence bound into that receipt. It does **not** prove authorship, reviewer identity, semantic correctness, or machine trustworthiness.
+
+Legacy v1 receipts remain verifiable with their narrower original coverage.
+
+## Historical review is not new permission
+
+Record a human conclusion about an already-observed change:
 
 ```bash
-vibetrace verify vt_204718_a91f3c --json
+patchoath review --accept-effect --reviewer "Alice"
 ```
 
-Verification performs two independent checks:
+or:
 
-1. **Receipt recomputation** — rebuilds the deterministic receipt from the currently stored checkpoint evidence.
-2. **Visual artifact verification** — when before/after screenshots were captured, reads the actual local image files again and compares their SHA-256 hashes with the hashes recorded at capture time.
+```bash
+patchoath review --needs-follow-up --note "Auth change needs a dedicated review"
+```
 
-This means VibeTrace can distinguish:
+The record is stored separately from the checkpoint and is bound to its source Evidence Receipt.
+
+The following invariant is tested:
 
 ```text
-verified            stored evidence still matches
-
-evidence-mismatch   checkpoint evidence changed after receipt creation
-artifact-mismatch   a captured image exists but its bytes changed
-artifact-missing    a captured image expected by the checkpoint is gone
+accept-effect ≠ future authority
 ```
 
-`vibetrace verify` exits with status `0` when verification succeeds and `2` when the evidence does not match, so it can be used in scripts and CI.
+Creating a review record must not mutate the original Change Contract, Evidence Receipt, or checkpoint bytes.
 
-### Trust model
+Reviewer labels are claimed labels only; PatchOath does not pretend that entering a name authenticates identity.
 
-VibeTrace currently provides **local integrity verification**, not a complete trust system.
+## Minimum-disclosure evidence
 
-It can detect accidental or uncoordinated modification of captured evidence. It cannot stop an attacker who controls the local repository from rewriting both the evidence and its receipt. Cryptographic signatures and external trust anchors are deliberately separate future work.
+A full local report may contain prompts, paths, contract patterns, screenshots, and other sensitive evidence. It should not be treated as a share-safe artifact by default.
 
-Verification also does **not** prove:
+Create a smaller Evidence Capsule instead:
 
-- who authored the code;
-- which agent produced it;
-- that the original machine or browser environment was trustworthy;
-- that a screenshot is semantically correct;
-- that a change is safe merely because its receipt verifies.
+```bash
+patchoath capsule --json
+```
 
-A verified receipt means something narrower and useful: **the evidence currently available to VibeTrace is internally consistent with the evidence that was bound into that receipt.**
+The default policy omits:
 
-## Why this is useful
+- full prompt text;
+- changed file paths;
+- full contract patterns;
+- Git patches;
+- screenshot bytes.
 
-### Review AI changes without guessing
+Expanded disclosure requires explicit flags. Capsules carry a separate Disclosure Receipt and can be verified without loading the source checkpoint.
 
-Git diff answers **what changed**. VibeTrace adds **what was requested** and **what was explicitly permitted**.
+## Non-mutating Git snapshots
 
-### Put hard boundaries around soft prompts
+Checkpoint capture is designed not to move normal developer state. PatchOath:
 
-Natural language is fuzzy. A change contract can turn “just tweak the hero” into auditable path constraints and file/line budgets.
+1. creates a temporary Git index;
+2. loads `HEAD` into it;
+3. stages the current worktree into the temporary index;
+4. writes a tree and local commit object;
+5. deletes the temporary index; and
+6. anchors completed evidence beneath private refs.
 
-### Preserve evidence without disturbing developer work
+New evidence uses:
 
-VibeTrace creates before/after snapshots with a temporary Git index and local Git objects. It does not move `HEAD`, stash the worktree, or replace the real index.
+```text
+refs/patchoath/checkpoints/<id>/before
+refs/patchoath/checkpoints/<id>/after
+```
 
-### See visual side effects next to code effects
+The real Git index, branch, and `HEAD` are not moved by checkpoint capture.
 
-With the optional Playwright adapter, checkpoints can capture before/after screenshots plus basic pixel, layout, and DOM evidence.
+## Optional visual evidence
 
-### Keep the reasoning inspectable
+With Playwright installed, a checkpoint can bind before/after page evidence:
 
-Blast Radius and risk are deterministic review heuristics. Every point maps to visible reasons such as file spread, sensitive areas, line churn, prompt mismatch, authorization drift, or unexpected visual movement.
+```bash
+npx playwright install chromium
 
-## Try the interface
+patchoath checkpoint \
+  --prompt "Refine the checkout summary" \
+  --allow "src/checkout/**,src/styles/**" \
+  --url http://localhost:3000
+
+# agent edits; app reloads
+patchoath checkpoint --finish
+patchoath report --open
+```
+
+| Layer                | Current support                              |
+| -------------------- | -------------------------------------------- |
+| Screenshot bytes     | SHA-256 captured + re-hashed on verification |
+| Pixel difference     | thresholded RGBA comparison                  |
+| Layout movement      | basic visible-element movement / resize      |
+| DOM change           | basic fingerprint + visible-node delta       |
+| Semantic correctness | **not inferred**                             |
+
+Visual output can vary with browser build, OS, fonts, and rendering hardware. Prefer like-for-like environments.
+
+## Guarded restore
+
+Restore is dry-run first and refuses to apply when later worktree drift is present:
+
+```bash
+patchoath restore
+patchoath restore --apply
+```
+
+Applying restore changes the worktree to the checkpoint before-state while preserving `HEAD` and the real Git index.
+
+## CLI
+
+| Command                             | Purpose                                               |
+| ----------------------------------- | ----------------------------------------------------- |
+| `patchoath init`                    | initialize local `.patchoath/` evidence state         |
+| `patchoath checkpoint --prompt "…"` | begin a two-phase checkpoint                          |
+| `patchoath checkpoint --finish`     | capture the after-state and bind evidence             |
+| `patchoath checkpoint --abort`      | discard the active checkpoint                         |
+| `patchoath diff [id]`               | inspect current or saved Blast Radius                 |
+| `patchoath attest …`                | one-shot contract check for existing worktree changes |
+| `patchoath verify [id]`             | recompute receipt and verify Git / visual evidence    |
+| `patchoath contract-delta [id]`     | compute a restricted evidence-bound authority delta   |
+| `patchoath review …`                | record or verify a historical human review            |
+| `patchoath capsule …`               | create or verify minimum-disclosure evidence          |
+| `patchoath replay`                  | replay the current session timeline                   |
+| `patchoath report [id]`             | generate a standalone local review report             |
+| `patchoath restore [id]`            | preview or safely apply a guarded restore             |
+
+## Install from the repository
+
+PatchOath remains intentionally `private: true` while the v0.3 migration and release gates are being completed, so there is no public npm-install claim yet.
+
+For local development:
 
 ```bash
 git clone https://github.com/feifeing/vibetrace.git
 cd vibetrace
 npm install
-npm run dev
-```
-
-Open [http://127.0.0.1:4173](http://127.0.0.1:4173).
-
-The demo presents the evidence chain as:
-
-**Asked → Authorized → Observed → Evidence → Receipt**
-
-## Install the repository CLI locally
-
-```bash
 npm link
-cd /path/to/your-project
-vibetrace init
+
+cd /path/to/your/project
+patchoath init
 ```
 
-A normal checkpoint does not require a contract:
+The current GitHub repository slug is retained during the migration; product, package, CLI, state, and evidence namespaces are moving to PatchOath first so existing links do not break mid-change.
 
-```bash
-vibetrace checkpoint --prompt "Make the hero cinematic"
-```
+## Legacy compatibility
 
-A guarded checkpoint adds explicit authorization:
+PatchOath v0.3 is designed to preserve evidence created by the earlier VibeTrace alpha.
 
-```bash
-vibetrace checkpoint \
-  --prompt "Make the hero cinematic" \
-  --allow "src/marketing/**,src/styles/**" \
-  --deny "src/auth/**,infra/**" \
-  --max-files 5
-```
-
-The contract is stored with the recording checkpoint. `vibetrace checkpoint --finish` restores the same authorization context even when it runs later in another CLI process, evaluates the final change against it, and stores the resulting Evidence Receipt.
-
-For an existing worktree change:
-
-```bash
-vibetrace checkpoint \
-  --prompt "Describe the change that just happened" \
-  --allow "src/ui/**" \
-  --from-head
-```
-
-A clean worktree is rejected instead of generating a meaningless checkpoint.
-
-## One-shot attestation
-
-For scripts or an existing set of worktree changes:
-
-```bash
-vibetrace attest \
-  --prompt "Change the button color" \
-  --allow "src/components/**,src/styles/**" \
-  --deny "src/auth/**" \
-  --max-files 3 \
-  --max-lines 80
-```
-
-`vibetrace attest` exits with status `2` when an explicit contract is violated. This makes it script-friendly without pretending to be an autonomous semantic policy engine.
-
-## Optional visual evidence
-
-Install Chromium once:
-
-```bash
-npx playwright install chromium
-```
-
-Keep the application running and start the checkpoint with a URL:
-
-```bash
-vibetrace checkpoint \
-  --prompt "Refine the checkout summary" \
-  --allow "src/checkout/**,src/styles/**" \
-  --deny "src/auth/**" \
-  --url http://localhost:3000
-
-# agent edits; dev server reloads
-vibetrace checkpoint --finish
-vibetrace report --open
-```
-
-Each captured PNG is SHA-256 hashed at capture time and re-hashed by `vibetrace verify` when the local artifact is available.
-
-| Evidence layer       | Capture | Verification  | Meaning                                      |
-| -------------------- | ------- | ------------- | -------------------------------------------- |
-| Git object IDs       | Yes     | Receipt       | Before/after repository object references    |
-| File + line scope    | Yes     | Receipt       | Normalized changed paths and churn           |
-| Contract compliance  | Yes     | Receipt       | Explicit authorization drift                 |
-| Screenshot bytes     | Yes     | **File hash** | Detect replaced or missing local PNGs        |
-| Pixel difference     | Yes     | Receipt       | Thresholded RGBA difference                  |
-| Layout change        | Basic   | Receipt       | Visible elements moved/resized/added/removed |
-| DOM change           | Basic   | Receipt       | DOM fingerprint + visible-node delta         |
-| Semantic correctness | **No**  | **No**        | Requires assertions or human review          |
-
-Browser output can vary by OS, browser build, fonts, and hardware. Compare visual captures from the same environment.
-
-## CLI
-
-| Command                                 | What it does                                                    |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `vibetrace init`                        | Initializes local VibeTrace state                               |
-| `vibetrace checkpoint --prompt "…"`     | Starts a two-phase before/after checkpoint                      |
-| `vibetrace checkpoint … --allow/--deny` | Starts a checkpoint with an explicit change contract            |
-| `vibetrace checkpoint --finish`         | Captures after state, evaluates evidence, stores a receipt      |
-| `vibetrace checkpoint --abort`          | Removes active checkpoint metadata/artifacts/private refs       |
-| `vibetrace diff [id]`                   | Shows live or saved Blast Radius and review evidence            |
-| `vibetrace diff --json`                 | Emits machine-readable analysis                                 |
-| `vibetrace attest …`                    | Checks current worktree changes against a declared contract     |
-| `vibetrace verify [id]`                 | Recomputes the receipt and verifies local visual artifact bytes |
-| `vibetrace verify [id] --json`          | Emits machine-readable integrity verification                   |
-| `vibetrace replay`                      | Replays the current session timeline                            |
-| `vibetrace session new --name "…"`      | Starts a separate evidence timeline                             |
-| `vibetrace report [id]`                 | Generates a standalone local report                             |
-
-Change-contract options:
+New work writes:
 
 ```text
---allow <glob,...>    paths the change may touch
---deny <glob,...>     protected paths the change must not touch
---max-files <n>       maximum changed-file budget
---max-lines <n>       maximum inserted + deleted line budget
+.patchoath/
+refs/patchoath/…
+po_…   poe_…   pocd_…   pod_…   por_…
 ```
 
-## How checkpoints avoid mutating your work
-
-For a worktree snapshot VibeTrace:
-
-1. creates a temporary Git index outside the repository;
-2. loads `HEAD` into that index;
-3. stages the current worktree into the temporary index;
-4. writes a Git tree and local commit object;
-5. deletes the temporary index; and
-6. anchors evidence beneath private refs such as:
+Legacy evidence remains readable/verifiable from:
 
 ```text
-refs/vibetrace/checkpoints/<id>/before
-refs/vibetrace/checkpoints/<id>/after
+.vibetrace/
+refs/vibetrace/…
+vt_…   vtr_…   vtcd_…   vtd_…   vrr_…
 ```
 
-The real index, branch, and worktree are not rewritten by checkpoint capture.
-
-## Explainable analysis
-
-The deterministic model separates breadth from review priority:
-
-```text
-Blast Radius = observed scope
-             + module/directory spread
-             + sensitive surfaces
-             + intent mismatch
-             + authorization drift
-
-Risk = file scope
-     + line churn
-     + sensitive-area weights
-     + prompt/change mismatch
-     + explicit authorization drift
-     + large-refactor shape
-     + unexpected visual movement
-```
-
-`Intent mismatch` is heuristic. `Authorization drift` is based on a user-declared contract. The stored report preserves that distinction.
+The old `vibetrace` executable is a temporary deprecated compatibility shim. New documentation and examples use `patchoath` only.
 
 ## Architecture
 
-| Module                  | Responsibility                                              |
-| ----------------------- | ----------------------------------------------------------- |
-| `src/git/`              | Non-mutating snapshots and normalized Git evidence          |
-| `src/core/intent.mjs`   | Transparent prompt-scope inference                          |
-| `src/core/contract.mjs` | Explicit change authorization and compliance                |
-| `src/core/receipt.mjs`  | Deterministic evidence receipts and receipt recomputation   |
-| `src/verify.mjs`        | Checkpoint and local visual-artifact integrity verification |
-| `src/core/risk.mjs`     | Blast Radius, mismatch, authorization drift, risk           |
-| `src/core/store.mjs`    | Atomic checkpoint/session persistence and evidence binding  |
-| `src/visual/`           | Optional screenshot, pixel, layout, DOM evidence            |
-| `src/report/` + `web/`  | Standalone evidence report                                  |
+```text
+src/core/        contracts · intent · receipts · review · disclosure
+src/git/         snapshots · diff · restore · refs
+src/visual/      optional Playwright capture and comparison
+src/report/      standalone report derivation
+web/             read-only Review / Disclosure dashboard
+bin/patchoath    CLI entrypoint
+```
 
-## What is implemented now
+Core trust rule:
 
-- [x] Two-phase prompt-aware checkpoints
-- [x] Explicit path + file/line-budget change contracts
-- [x] Authorization Drift distinct from inferred Intent Mismatch
-- [x] Contract persistence across checkpoint start/finish processes
-- [x] Non-mutating Git before/after evidence
-- [x] Deterministic Evidence Receipts on completed checkpoints
-- [x] Receipt recomputation with `vibetrace verify`
-- [x] Detection of modified checkpoint evidence
-- [x] Re-hashing of local before/after screenshot files
-- [x] Detection of replaced or missing visual artifacts
-- [x] One-shot `attest` command for scripts
-- [x] Explainable Blast Radius and risk factors
-- [x] Sessions, replay, JSON output, standalone reports
-- [x] Optional Playwright screenshot evidence
-- [x] Basic pixel/layout/DOM comparison
-- [x] Automated unit/CLI/browser CI
+> **Do not turn an inference into authority, a historical review into future permission, or a rich local report into implicit disclosure consent.**
 
-## Related work and originality boundary
+## What PatchOath is not
 
-VibeTrace intentionally documents prior art rather than hiding it. AI change monitoring, Git checkpointing, prompt tracking, path allowlists, blast-radius analysis, visual regression, and session timelines existed before this project.
+PatchOath is not:
 
-The project therefore does **not** use “first ever” claims for those primitives.
+- an AI coding agent;
+- a replacement for Git;
+- an autonomous policy engine;
+- an authorship or identity attestation system;
+- a proof that changed code is semantically correct;
+- an opaque probability-of-failure model.
 
-The distinctive design being developed here is the combination and separation of:
+Its scores are deterministic review heuristics with itemized reasons.
 
-1. **inferred intent** — useful context, but not permission;
-2. **explicit authorization** — the developer's declared change boundary;
-3. **observed effect** — Git and optional visual evidence;
-4. **authorization drift** — evidence that the effect crossed that boundary;
-5. **deterministic receipts** — a compact integrity record over captured evidence; and
-6. **verification** — recomputation plus direct re-hashing of local visual artifacts.
+## Rights and release discipline
 
-See [Related work and differentiation boundary](docs/related-work.md) for explicit non-novelty claims and the project's current design boundary.
+The repository includes an automated `rights:check` gate covering the reviewed dependency-license baseline, required notices, remote dashboard assets, bundled fonts, package privacy, and brand migration invariants.
 
-## Roadmap
+See:
 
-- [ ] Verify continued availability of referenced Git evidence objects
-- [ ] Richer contract assertions beyond path/file/line budgets
-- [ ] Guarded restore with drift detection, dry-run, and explicit confirmation
-- [ ] Signed attestations layered on deterministic receipts
-- [ ] Vendor-neutral coding-agent hooks
-- [ ] PR annotations and portable evidence bundles
-- [ ] Deterministic masking for volatile visual regions
-- [ ] Accessibility-tree evidence and user-authored assertions
+- [`LEGAL.md`](LEGAL.md)
+- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+- [`docs/brand-clearance.md`](docs/brand-clearance.md)
+- [`docs/asset-provenance.md`](docs/asset-provenance.md)
+- [`docs/release-readiness.md`](docs/release-readiness.md)
+
+Public name searches reduce collision risk but are not a substitute for formal trademark counsel before material commercial use.
 
 ## Philosophy
 
-**Intent is context, not permission.** A natural-language guess must not silently become an authorization boundary.
+**Intent is context, not permission.**
 
-**Declared boundaries outrank guesses.** Crossing an explicit protected path is stronger evidence than a heuristic mismatch.
+**Declared boundaries outrank guesses.**
 
-**Evidence before verdicts.** Preserve what happened before summarizing how risky it looks.
+**Observed effects should be recomputable.**
 
-**Verification should be inspectable.** A receipt that cannot be recomputed is just decoration.
+**Review the historical patch without silently granting the next one.**
 
-**Explainable before intelligent.** Review tooling should show why it raised a flag.
+**Disclose the minimum evidence necessary.**
 
-**Git-compatible, not Git-shaped.** Add AI-change context without becoming another Git GUI.
+**Explainable before intelligent.**
 
-## Contributing
+## Status
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md). Focused issues and pull requests are especially welcome around contract semantics, diff edge cases, risk calibration, deterministic capture, and evidence verification.
+PatchOath v0.3 is an actively hardened open-source alpha. Current automated validation covers Node 20/22, Chromium E2E, packaged CLI smoke tests on Ubuntu and Windows, formatting, and rights/release checks.
 
-Security reports belong in [SECURITY.md](SECURITY.md), not public issues.
+Contributions are welcome after reading [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-## License
-
-[MIT](LICENSE) © VibeTrace contributors
+MIT licensed. See [`LICENSE`](LICENSE).

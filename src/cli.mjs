@@ -1,6 +1,16 @@
 import { spawn } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
+import {
+  BRAND_NAME,
+  CLI_NAME,
+  LEGACY_CHECKPOINT_ID_PREFIX,
+  LEGACY_REF_NAMESPACE,
+  REF_NAMESPACE,
+  TAGLINE,
+  VERSION,
+  checkpointRef,
+} from "./core/brand.mjs";
 import { analyzeChangeSet } from "./core/risk.mjs";
 import { createId } from "./core/id.mjs";
 import { inferPromptIntent } from "./core/intent.mjs";
@@ -28,7 +38,6 @@ import {
   deleteRef,
   findRepositoryRoot,
   repositoryMetadata,
-  runGit,
   updateRef,
 } from "./git/git.mjs";
 import { createWorktreeSnapshot } from "./git/snapshot.mjs";
@@ -36,27 +45,27 @@ import { generateReport } from "./report/generate.mjs";
 import { capturePage } from "./visual/capture.mjs";
 import { compareVisualCaptures } from "./visual/compare.mjs";
 
-export const VERSION = "0.2.0";
+export { VERSION };
 
-const HELP = `VibeTrace ${VERSION} — time travel for vibe coding
+const HELP = `${BRAND_NAME} ${VERSION} — ${TAGLINE}
 
 Usage:
-  vibetrace init
-  vibetrace checkpoint --prompt "Make the hero cinematic" [--url http://localhost:3000]
-  vibetrace checkpoint --finish
-  vibetrace checkpoint --prompt "Describe existing edits" --from-head
-  vibetrace diff [checkpoint] [--scope all|staged|unstaged] [--json] [--patch]
-  vibetrace replay [--json]
-  vibetrace session [new] [--name "Landing page pass"] [--json]
-  vibetrace report [checkpoint] [--open]
+  ${CLI_NAME} init
+  ${CLI_NAME} checkpoint --prompt "Make the hero cinematic" [--url http://localhost:3000]
+  ${CLI_NAME} checkpoint --finish
+  ${CLI_NAME} checkpoint --prompt "Describe existing edits" --from-head
+  ${CLI_NAME} diff [checkpoint] [--scope all|staged|unstaged] [--json] [--patch]
+  ${CLI_NAME} replay [--json]
+  ${CLI_NAME} session [new] [--name "Landing page pass"] [--json]
+  ${CLI_NAME} report [checkpoint] [--open]
 
 Checkpoint flow:
   1. Start a prompt-aware checkpoint before the AI edits.
-  2. Run "vibetrace diff" at any time to inspect the live blast radius.
-  3. Run "vibetrace checkpoint --finish" to save the after state and analysis.
+  2. Run "${CLI_NAME} diff" at any time to inspect the live blast radius.
+  3. Run "${CLI_NAME} checkpoint --finish" to save the after state and analysis.
 
 Options:
-  --prompt <text>       Prompt whose intent VibeTrace should track
+  --prompt <text>       Prompt whose intent ${BRAND_NAME} should track
   --url <url>           Capture before/after screenshots with Playwright
   --viewport <WxH>      Screenshot viewport (default: 1440x900)
   --wait <ms>           Extra stabilization wait after page load
@@ -211,7 +220,7 @@ function printAnalysis(ui, analysis, checkpoint = null) {
   const summary = analysis.summary;
   ui.line("");
   if (checkpoint)
-    ui.line(`${ui.title("✦ VibeTrace")} ${ui.dim(checkpoint.id)}`);
+    ui.line(`${ui.title(`✦ ${BRAND_NAME}`)} ${ui.dim(checkpoint.id)}`);
   ui.line(
     `  ${ui.label("prompt")}  ${checkpoint?.prompt?.text || "Unspecified working-tree change"}`,
   );
@@ -267,7 +276,7 @@ function printAnalysis(ui, analysis, checkpoint = null) {
     ui.line(
       `  DOM          ${analysis.visual.dom.changed ? "fingerprint changed" : "no fingerprint change"}`,
     );
-    ui.line(`  semantics    ${ui.dim("not inferred in v0.2")}`);
+    ui.line(`  semantics    ${ui.dim("not inferred")}`);
   }
   ui.line("");
 }
@@ -345,11 +354,25 @@ async function finishVisual(root, checkpoint) {
   return portableVisual(root, comparison);
 }
 
+function refNamespaceForCheckpointId(checkpointId) {
+  return checkpointId.startsWith(`${LEGACY_CHECKPOINT_ID_PREFIX}_`)
+    ? LEGACY_REF_NAMESPACE
+    : REF_NAMESPACE;
+}
+
+function phaseRef(checkpointId, phase) {
+  return checkpointRef(
+    checkpointId,
+    phase,
+    refNamespaceForCheckpointId(checkpointId),
+  );
+}
+
 async function startCheckpoint(root, prompt, options, ui) {
   const { config, state } = await loadStore(root);
   if (state.activeCheckpointId) {
     throw new Error(
-      `Checkpoint ${state.activeCheckpointId} is still recording. Finish it with "vibetrace checkpoint --finish" or discard it with "--abort".`,
+      `Checkpoint ${state.activeCheckpointId} is still recording. Finish it with "${CLI_NAME} checkpoint --finish" or discard it with "--abort".`,
     );
   }
   if (!prompt?.trim())
@@ -362,9 +385,9 @@ async function startCheckpoint(root, prompt, options, ui) {
     );
   }
 
-  const id = createId("vt");
-  const beforeRef = `refs/vibetrace/checkpoints/${id}/before`;
-  const afterRef = `refs/vibetrace/checkpoints/${id}/after`;
+  const id = createId();
+  const beforeRef = phaseRef(id, "before");
+  const afterRef = phaseRef(id, "after");
   const repository = repositoryMetadata(root);
   const now = new Date().toISOString();
   let beforeCommit;
@@ -459,9 +482,9 @@ async function startCheckpoint(root, prompt, options, ui) {
     );
   ui.line("");
   ui.line(
-    `  Let the AI edit, inspect with ${ui.dim("vibetrace diff")}, then run:`,
+    `  Let the AI edit, inspect with ${ui.dim(`${CLI_NAME} diff`)}, then run:`,
   );
-  ui.line(`  ${ui.title("vibetrace checkpoint --finish")}`);
+  ui.line(`  ${ui.title(`${CLI_NAME} checkpoint --finish`)}`);
   ui.line("");
 }
 
@@ -470,7 +493,7 @@ async function finishCheckpoint(root, ui) {
   if (!state.activeCheckpointId)
     throw new Error("There is no active checkpoint to finish.");
   const checkpoint = await loadCheckpoint(root, state.activeCheckpointId);
-  const afterRef = `refs/vibetrace/checkpoints/${checkpoint.id}/after`;
+  const afterRef = phaseRef(checkpoint.id, "after");
   const afterSnapshot = await createWorktreeSnapshot(
     root,
     `${checkpoint.id} after`,
@@ -667,11 +690,11 @@ async function commandSession(root, parsed, ui) {
 
   if (action !== "show") {
     throw new Error(
-      `Unknown session action: ${action}. Use "vibetrace session" or "vibetrace session new".`,
+      `Unknown session action: ${action}. Use "${CLI_NAME} session" or "${CLI_NAME} session new".`,
     );
   }
   if (parsed.options["--name"] !== undefined) {
-    throw new Error('--name is only valid with "vibetrace session new".');
+    throw new Error(`--name is only valid with "${CLI_NAME} session new".`);
   }
   const session = await loadSession(root, config.currentSessionId);
   if (parsed.options["--json"]) ui.line(JSON.stringify(session, null, 2));
@@ -778,10 +801,11 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     if (parsed.command === "init") {
       ensureNoExtraPositionals(parsed, 0);
       const result = await initializeStore(root);
+      const suffix = result.legacyStore ? " (legacy compatibility store)" : "";
       ui.line(
         result.created
-          ? `${ui.good("initialized")} .vibetrace/ (kept local through .git/info/exclude)`
-          : `${ui.good("ready")} VibeTrace is already initialized.`,
+          ? `${ui.good("initialized")} ${result.paths.directoryName}/${suffix} (kept local through .git/info/exclude)`
+          : `${ui.good("ready")} ${BRAND_NAME} is already initialized in ${result.paths.directoryName}/${suffix}.`,
       );
       return 0;
     }
@@ -840,7 +864,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       return 0;
     }
     throw new Error(
-      `Unknown command: ${parsed.command}. Run "vibetrace --help".`,
+      `Unknown command: ${parsed.command}. Run "${CLI_NAME} --help".`,
     );
   } catch (error) {
     ui.error(error.message);

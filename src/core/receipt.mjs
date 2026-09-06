@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  EVIDENCE_RECEIPT_PREFIX,
+  LEGACY_EVIDENCE_RECEIPT_PREFIX,
+  hasLegacyPrefix,
+} from "./brand.mjs";
 
 const CURRENT_EVIDENCE_VERSION = 2;
 const SUPPORTED_EVIDENCE_VERSIONS = new Set([1, 2]);
@@ -135,16 +140,19 @@ function coverageForVersion(version) {
 
 export function createEvidenceReceipt(
   checkpoint,
-  { version = CURRENT_EVIDENCE_VERSION } = {},
+  { version = CURRENT_EVIDENCE_VERSION, legacyPrefix = false } = {},
 ) {
   if (!SUPPORTED_EVIDENCE_VERSIONS.has(version)) {
     throw new Error(`Unsupported Evidence Receipt version: ${version}.`);
   }
   const evidence = evidenceForCheckpoint(checkpoint, version);
   if (!evidence) return null;
+  const prefix = legacyPrefix
+    ? LEGACY_EVIDENCE_RECEIPT_PREFIX
+    : EVIDENCE_RECEIPT_PREFIX;
   return {
     algorithm: "sha256",
-    receiptId: `vtr_${sha256(evidence).slice(0, 24)}`,
+    receiptId: `${prefix}_${sha256(evidence).slice(0, 24)}`,
     evidence,
   };
 }
@@ -175,7 +183,14 @@ export function verifyEvidenceReceipt(checkpoint) {
     };
   }
 
-  const recomputed = createEvidenceReceipt(checkpoint, { version });
+  const legacyPrefix = hasLegacyPrefix(
+    stored.receiptId,
+    LEGACY_EVIDENCE_RECEIPT_PREFIX,
+  );
+  const recomputed = createEvidenceReceipt(checkpoint, {
+    version,
+    legacyPrefix,
+  });
   if (!recomputed) {
     return {
       valid: false,

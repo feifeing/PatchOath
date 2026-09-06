@@ -1,10 +1,10 @@
-const reportData = window.__VIBETRACE_REPORT__;
+const reportData = window.__PATCHOATH_REPORT__ || window.__VIBETRACE_REPORT__;
 const checkpointId = document.getElementById("checkpointId");
 const reviewPlane = document.getElementById("reviewPlane");
 
 if (!checkpointId || !reviewPlane) {
   throw new Error(
-    "VibeTrace historical review UI could not find its host elements.",
+    "PatchOath historical review UI could not find its host elements.",
   );
 }
 
@@ -14,8 +14,8 @@ const demoHistoricalReviews = {
     count: 1,
     latest: {
       record: {
-        recordId: "vrr_61d1ad8d769fa25cc28d829a",
-        sourceReceiptId: "vtr_4f71a9c83e16d52a3f308cf0",
+        recordId: "por_61d1ad8d769fa25cc28d829a",
+        sourceReceiptId: "poe_4f71a9c83e16d52a3f308cf0",
         disposition: "needs-follow-up",
         recordedAt: "2026-09-03T15:18:00.000Z",
         note: "Auth and routing changes still require a security review.",
@@ -31,7 +31,7 @@ const demoHistoricalReviews = {
     },
     sourceReceiptCurrent: { valid: true, reason: "verified" },
     reportVerificationScope: "record-integrity-plus-source-receipt",
-    fullVerifyCommand: "vibetrace review --verify vrr_61d1ad8d769fa25cc28d829a",
+    fullVerifyCommand: "patchoath review --verify por_61d1ad8d769fa25cc28d829a",
     authorityBoundary: {
       historicalEffectOnly: true,
       changeContractMutated: false,
@@ -43,8 +43,8 @@ const demoHistoricalReviews = {
     count: 1,
     latest: {
       record: {
-        recordId: "vrr_4b72c436cdac2f91b702b975",
-        sourceReceiptId: "vtr_16bbac216de20b8c011197d2",
+        recordId: "por_4b72c436cdac2f91b702b975",
+        sourceReceiptId: "poe_16bbac216de20b8c011197d2",
         disposition: "accept-effect",
         recordedAt: "2026-09-03T15:12:00.000Z",
         note: "Accepted for this captured effect only.",
@@ -60,7 +60,7 @@ const demoHistoricalReviews = {
     },
     sourceReceiptCurrent: { valid: true, reason: "verified" },
     reportVerificationScope: "record-integrity-plus-source-receipt",
-    fullVerifyCommand: "vibetrace review --verify vrr_4b72c436cdac2f91b702b975",
+    fullVerifyCommand: "patchoath review --verify por_4b72c436cdac2f91b702b975",
     authorityBoundary: {
       historicalEffectOnly: true,
       changeContractMutated: false,
@@ -95,15 +95,19 @@ function displayedCheckpointKey() {
   return checkpointId.textContent.trim().replace(/^#/u, "");
 }
 
+function checkpointDisplayKey(value) {
+  return String(value || "").replace(/^(?:po|vt)_/u, "");
+}
+
 function currentCheckpoint() {
   const displayed = displayedCheckpointKey();
   if (reportData?.checkpoints?.length) {
     return reportData.checkpoints.find(
-      (checkpoint) => checkpoint.id.replace(/^vt_/u, "") === displayed,
+      (checkpoint) => checkpointDisplayKey(checkpoint.id) === displayed,
     );
   }
   return {
-    id: `vt_${displayed}`,
+    id: `po_${displayed}`,
     review: {
       historicalEffectReview:
         demoHistoricalReviews[displayed] ||
@@ -152,7 +156,7 @@ function invariantRows(historical) {
 }
 
 function renderNotRecorded(checkpoint, historical) {
-  const command = `vibetrace review ${checkpoint.id} --help`;
+  const command = `patchoath review ${checkpoint.id} --help`;
   return `
     <div class="history-empty">
       <span class="history-status unreviewed">UNREVIEWED</span>
@@ -191,7 +195,7 @@ function renderLinked(historical) {
   const note = record.note || "No local review note was recorded.";
   const command =
     historical.fullVerifyCommand ||
-    `vibetrace review --verify ${record.recordId}`;
+    `patchoath review --verify ${record.recordId}`;
 
   return `
     <div class="history-outcome">

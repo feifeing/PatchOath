@@ -1,10 +1,11 @@
 {
-  "name": "vibetrace",
-  "version": "0.2.0",
+  "name": "patchoath",
+  "version": "0.3.0",
   "private": true,
-  "description": "Time travel for vibe coding — connect prompt intent to code impact, visual change, and explainable risk.",
+  "description": "Make every AI patch prove it stayed in scope — explicit authority, Git evidence, human review, and controlled disclosure.",
   "type": "module",
   "bin": {
+    "patchoath": "./bin/patchoath.mjs",
     "vibetrace": "./bin/vibetrace.mjs"
   },
   "files": [
@@ -18,7 +19,7 @@
   ],
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
-    "vibetrace": "node bin/vibetrace.mjs",
+    "patchoath": "node bin/patchoath.mjs",
     "check": "node scripts/check.mjs",
     "rights:check": "node scripts/rights-check.mjs",
     "test": "node --test",
@@ -32,7 +33,10 @@
     "ai-coding",
     "developer-tools",
     "git",
-    "visual-regression",
+    "code-review",
+    "agent-safety",
+    "change-control",
+    "evidence",
     "vibe-coding",
     "blast-radius"
   ],

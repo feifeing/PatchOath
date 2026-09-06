@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { CONTRACT_DELTA_RECEIPT_PREFIX } from "./brand.mjs";
 import { createChangeContract, evaluateChangeContract } from "./contract.mjs";
 import { verifyEvidenceReceipt } from "./receipt.mjs";
 
@@ -62,7 +63,7 @@ function protectedBlockers(compliance) {
       files: uniqueSorted(compliance.protectedFiles || []),
       proposedRelaxation: null,
       reason:
-        "VibeTrace never proposes removing an explicit deny rule from observed effect alone.",
+        "PatchOath never proposes removing an explicit deny rule from observed effect alone.",
     });
   }
   if (violationIds.has("protected-surface-touched")) {
@@ -72,7 +73,7 @@ function protectedBlockers(compliance) {
       files: uniqueSorted(compliance.protectedSurfaceFiles || []),
       proposedRelaxation: null,
       reason:
-        "VibeTrace never proposes unprotecting a sensitive surface from observed effect alone.",
+        "PatchOath never proposes unprotecting a sensitive surface from observed effect alone.",
     });
   }
   return blockers;
@@ -122,7 +123,7 @@ export function computeObservedContractDelta(checkpoint, observedFiles) {
   if (!checkpoint.authorization) {
     return {
       version: 1,
-      kind: "vibetrace-observed-contract-delta",
+      kind: "patchoath-observed-contract-delta",
       checkpointId: checkpoint.id,
       sourceEvidenceReceiptId: checkpoint.receipt.receiptId,
       sourceReceiptVerified: true,
@@ -189,7 +190,7 @@ export function computeObservedContractDelta(checkpoint, observedFiles) {
 
   return {
     version: 1,
-    kind: "vibetrace-observed-contract-delta",
+    kind: "patchoath-observed-contract-delta",
     checkpointId: checkpoint.id,
     sourceEvidenceReceiptId: checkpoint.receipt.receiptId,
     sourceReceiptVerified: true,
@@ -210,7 +211,7 @@ export function computeObservedContractDelta(checkpoint, observedFiles) {
     minimality: {
       model: "restricted-local-delta-v1",
       claim:
-        "Minimal only within VibeTrace's restricted proposal vocabulary: exact observed file grants plus budget increases to observed totals. It is not a globally minimal access-control policy.",
+        "Minimal only within PatchOath's restricted proposal vocabulary: exact observed file grants plus budget increases to observed totals. It is not a globally minimal access-control policy.",
       neverProposed: [
         "remove-deny",
         "unprotect-sensitive-surface",
@@ -220,7 +221,7 @@ export function computeObservedContractDelta(checkpoint, observedFiles) {
     },
     proposalReceipt: {
       algorithm: "sha256",
-      receiptId: `vtcd_${sha256(receiptBody).slice(0, 24)}`,
+      receiptId: `${CONTRACT_DELTA_RECEIPT_PREFIX}_${sha256(receiptBody).slice(0, 24)}`,
       originalContractSha256: receiptBody.originalContractSha256,
       observedEffectSha256: receiptBody.observedEffectSha256,
       sourceEvidenceReceiptId: receiptBody.sourceEvidenceReceiptId,

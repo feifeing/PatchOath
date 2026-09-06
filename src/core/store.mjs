@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import {
   mkdir,
   readFile,
@@ -7,6 +8,12 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
+import {
+  LEGACY_REF_NAMESPACE,
+  LEGACY_STORE_DIRECTORY_NAME,
+  REF_NAMESPACE,
+  STORE_DIRECTORY_NAME,
+} from "./brand.mjs";
 import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
 import { createId } from "./id.mjs";
 import {
@@ -16,10 +23,23 @@ import {
 import { createEvidenceReceipt } from "./receipt.mjs";
 import { runGit } from "../git/git.mjs";
 
+function selectedStoreDirectory(root) {
+  const preferred = join(root, STORE_DIRECTORY_NAME);
+  const legacy = join(root, LEGACY_STORE_DIRECTORY_NAME);
+  if (existsSync(preferred)) return preferred;
+  if (existsSync(legacy)) return legacy;
+  return preferred;
+}
+
 export function storePaths(root) {
-  const directory = join(root, ".vibetrace");
+  const directory = selectedStoreDirectory(root);
   return {
     directory,
+    directoryName:
+      directory === join(root, LEGACY_STORE_DIRECTORY_NAME)
+        ? LEGACY_STORE_DIRECTORY_NAME
+        : STORE_DIRECTORY_NAME,
+    legacy: directory === join(root, LEGACY_STORE_DIRECTORY_NAME),
     config: join(directory, "config.json"),
     state: join(directory, "state.json"),
     checkpoints: join(directory, "checkpoints"),
@@ -59,15 +79,35 @@ async function ensureLocalExclude(root) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
+
+  const required = [
+    `/${STORE_DIRECTORY_NAME}/`,
+    `/${LEGACY_STORE_DIRECTORY_NAME}/`,
+  ];
   const lines = existing.split(/\r?\n/u);
-  if (!lines.includes("/.vibetrace/")) {
-    const separator = existing && !existing.endsWith("\n") ? "\n" : "";
-    await writeFile(
-      excludePath,
-      `${existing}${separator}/.vibetrace/\n`,
-      "utf8",
-    );
+  const missing = required.filter((line) => !lines.includes(line));
+  if (missing.length === 0) return;
+
+  const separator = existing && !existing.endsWith("\n") ? "\n" : "";
+  await writeFile(
+    excludePath,
+    `${existing}${separator}${missing.join("\n")}\n`,
+    "utf8",
+  );
+}
+
+function normalizeNewCheckpointRefs(checkpoint) {
+  if (!checkpoint?.id?.startsWith("po_")) return checkpoint;
+  for (const phase of ["before", "after"]) {
+    const ref = checkpoint[phase]?.ref;
+    if (typeof ref !== "string") continue;
+    const legacyPrefix = `${LEGACY_REF_NAMESPACE}/checkpoints/`;
+    if (ref.startsWith(legacyPrefix)) {
+      checkpoint[phase].ref =
+        `${REF_NAMESPACE}${ref.slice(LEGACY_REF_NAMESPACE.length)}`;
+    }
   }
+  return checkpoint;
 }
 
 export async function initializeStore(root) {
@@ -110,7 +150,7 @@ export async function initializeStore(root) {
     );
     created = true;
   }
-  return { paths, config, created };
+  return { paths, config, created, legacyStore: paths.legacy };
 }
 
 export async function loadStore(root) {
@@ -151,6 +191,7 @@ export async function loadSession(root, id) {
 }
 
 export async function saveCheckpoint(root, checkpoint) {
+  normalizeNewCheckpointRefs(checkpoint);
   if (!checkpoint.authorization) {
     checkpoint.authorization = runtimeChangeContract();
   }
@@ -161,9 +202,12 @@ export async function saveCheckpoint(root, checkpoint) {
     checkpoint.analysis
   ) {
     const storedVersion = checkpoint.receipt?.evidence?.version;
+    const legacyReceipt = checkpoint.receipt?.receiptId?.startsWith("vtr_");
     checkpoint.receipt = createEvidenceReceipt(
       checkpoint,
-      storedVersion ? { version: storedVersion } : undefined,
+      storedVersion
+        ? { version: storedVersion, legacyPrefix: legacyReceipt }
+        : undefined,
     );
   }
   assertValidCheckpoint(checkpoint);

@@ -1,12 +1,12 @@
-# VibeTrace Change Contracts
+# PatchOath Change Contracts
 
-A VibeTrace change contract is an explicit authorization boundary for one recorded code change.
+A PatchOath Change Contract is an explicit authorization boundary for one recorded code change.
 
 It is intentionally separate from prompt intent:
 
 ```text
 Prompt            what the developer wants
-Change contract   what the change is allowed to touch
+Change Contract   what the change is allowed to touch
 Observed effect   what Git and optional visual evidence show happened
 ```
 
@@ -17,7 +17,7 @@ A prompt can be vague. A declared contract is evaluated deterministically.
 A guarded checkpoint or one-shot attestation can combine these rules:
 
 ```bash
-vibetrace checkpoint \
+patchoath checkpoint \
   --prompt "Refine the checkout card" \
   --allow "src/checkout/**,src/styles/**" \
   --deny "src/private/**" \
@@ -40,7 +40,7 @@ All numeric limits are non-negative integers. A limit of `0` is valid and means 
 
 ## Protected surfaces
 
-`--protect-surface` is a repository-independent convenience over VibeTrace's deterministic file classifier. The current supported names are:
+`--protect-surface` is a repository-independent convenience over PatchOath's deterministic file classifier. The current supported names are:
 
 ```text
 ci
@@ -56,7 +56,7 @@ config
 For example:
 
 ```bash
-vibetrace attest \
+patchoath attest \
   --prompt "Adjust the marketing hero" \
   --protect-surface "auth,database,dependencies,ci" \
   --max-modules 1
@@ -91,7 +91,7 @@ The exact violating paths and budget totals are preserved with checkpoint eviden
 
 ## Module budgets
 
-VibeTrace uses the same deterministic module classifier for `--max-modules` that it uses for Blast Radius. It recognizes common monorepo roots such as `packages/*`, `apps/*`, and `services/*`, and otherwise falls back to stable top-level/module-like path groupings.
+PatchOath uses the same deterministic module classifier for `--max-modules` that it uses for Blast Radius. It recognizes common monorepo roots such as `packages/*`, `apps/*`, and `services/*`, and otherwise falls back to stable top-level/module-like path groupings.
 
 This makes a rule such as:
 
@@ -103,16 +103,16 @@ meaningfully different from `--max-files`: an agent can edit several files insid
 
 ## Persistence and receipts
 
-For a two-phase checkpoint, the contract is stored when the checkpoint starts. `vibetrace checkpoint --finish` restores that stored contract in a later CLI process and evaluates the final observed change against the original authorization.
+For a two-phase checkpoint, the contract is stored when the checkpoint starts. `patchoath checkpoint --finish` restores that stored contract in a later CLI process and evaluates the final observed change against the original authorization.
 
-The declared contract and resulting compliance evidence participate in the checkpoint's deterministic Evidence Receipt. Changing the stored authorization or compliance evidence after receipt creation causes `vibetrace verify` receipt recomputation to fail.
+The declared contract and resulting compliance evidence participate in the checkpoint's deterministic Evidence Receipt. Changing the stored authorization or compliance evidence after receipt creation causes `patchoath verify` receipt recomputation to fail.
 
 ## CI use
 
-For an existing worktree change, `vibetrace attest` evaluates the current `HEAD → worktree` effect without creating a two-phase session:
+For an existing worktree change, `patchoath attest` evaluates the current `HEAD → worktree` effect without creating a two-phase session:
 
 ```bash
-vibetrace attest \
+patchoath attest \
   --prompt "Update checkout copy" \
   --allow "src/checkout/**" \
   --protect-surface "auth,database" \
@@ -128,11 +128,11 @@ Exit codes:
 2   explicit contract violated
 ```
 
-This makes the command usable as a deterministic CI gate without pretending that VibeTrace can infer the semantic safety of arbitrary code.
+This makes the command usable as a deterministic CI gate without pretending that PatchOath can infer the semantic safety of arbitrary code.
 
 ## Design boundary
 
-A change contract answers a narrow question:
+A Change Contract answers a narrow question:
 
 > Did the observed structural change remain inside the explicit boundary that the developer declared?
 
@@ -144,4 +144,4 @@ It does **not** prove that:
 - a protected-surface classifier recognizes every semantically sensitive file;
 - the coding agent was the actor that produced the observed change.
 
-Those are separate claims and should remain separate from authorization drift.
+Those are separate claims and should remain separate from Authorization Drift.

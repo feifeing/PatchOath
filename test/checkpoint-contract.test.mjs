@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRepository } from "../test-support/helpers.mjs";
 
-const cli = resolve("bin/vibetrace.mjs");
+const cli = resolve("bin/patchoath.mjs");
+const store = ".patchoath";
 
 function run(root, args) {
   return execFileSync(process.execPath, [cli, ...args], {
@@ -15,11 +16,13 @@ function run(root, args) {
   });
 }
 
-test("two-phase checkpoints persist authorization and emit evidence receipts", async (context) => {
+test("two-phase PatchOath checkpoints persist authorization and emit v2 receipts", async (context) => {
   const root = await createRepository();
   context.after(() => rm(root, { recursive: true, force: true }));
 
-  run(root, ["init"]);
+  const initOutput = run(root, ["init"]);
+  assert.match(initOutput, /\.patchoath\//u);
+
   run(root, [
     "checkpoint",
     "--prompt",
@@ -49,18 +52,17 @@ test("two-phase checkpoints persist authorization and emit evidence receipts", a
   run(root, ["checkpoint", "--finish"]);
 
   const state = JSON.parse(
-    await readFile(join(root, ".vibetrace", "state.json"), "utf8"),
+    await readFile(join(root, store, "state.json"), "utf8"),
   );
   assert.equal(state.activeCheckpointId, null);
 
-  const names = await import("node:fs/promises").then(({ readdir }) =>
-    readdir(join(root, ".vibetrace", "checkpoints")),
-  );
+  const names = await readdir(join(root, store, "checkpoints"));
   assert.equal(names.length, 1);
   const checkpoint = JSON.parse(
-    await readFile(join(root, ".vibetrace", "checkpoints", names[0]), "utf8"),
+    await readFile(join(root, store, "checkpoints", names[0]), "utf8"),
   );
 
+  assert.match(checkpoint.id, /^po_/u);
   assert.deepEqual(checkpoint.authorization.allow, ["app.js"]);
   assert.deepEqual(checkpoint.authorization.deny, ["src/private/**"]);
   assert.deepEqual(checkpoint.authorization.protectedSurfaces, ["auth"]);
@@ -72,7 +74,8 @@ test("two-phase checkpoints persist authorization and emit evidence receipts", a
     ["auth"],
   );
   assert.equal(checkpoint.analysis.blastRadius.authorizationDrift, true);
-  assert.match(checkpoint.receipt.receiptId, /^vtr_[a-f0-9]{24}$/u);
+  assert.match(checkpoint.receipt.receiptId, /^poe_[a-f0-9]{24}$/u);
+  assert.equal(checkpoint.receipt.evidence.version, 2);
   assert.equal(
     checkpoint.receipt.evidence.authorization.contract.maxFiles,
     checkpoint.authorization.maxFiles,
@@ -81,4 +84,6 @@ test("two-phase checkpoints persist authorization and emit evidence receipts", a
     checkpoint.receipt.evidence.authorization.contract.protectedSurfaces,
     checkpoint.authorization.protectedSurfaces,
   );
+  assert.match(checkpoint.before.ref, /^refs\/patchoath\/checkpoints\//u);
+  assert.match(checkpoint.after.ref, /^refs\/patchoath\/checkpoints\//u);
 });

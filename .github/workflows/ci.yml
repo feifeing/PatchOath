@@ -69,6 +69,6 @@ jobs:
           name: browser-evidence
           path: |
             playwright-report/
-            test-results/vibetrace-dashboard.png
-            test-results/vibetrace-mobile.png
+            test-results/patchoath-dashboard.png
+            test-results/patchoath-mobile.png
           retention-days: 7

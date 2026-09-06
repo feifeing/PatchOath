@@ -1,16 +1,16 @@
 # Observed-effect Change-Contract Delta
 
-A Change Contract tells VibeTrace what an AI-assisted change is explicitly allowed to touch. When an observed change violates that contract, a useful follow-up question is:
+A Change Contract tells PatchOath what an AI-assisted change is explicitly allowed to touch. When an observed change violates that contract, a useful follow-up question is:
 
-> If a human actually intended to approve this exact observed result, what is the narrowest mechanical change VibeTrace can safely propose to the existing contract?
+> If a human actually intended to approve this exact observed result, what is the narrowest mechanical change PatchOath can safely propose to the existing contract?
 
-`vibetrace contract-delta` answers that question without applying or persisting any permission change.
+`patchoath contract-delta` answers that question without applying or persisting any permission change.
 
 ## What the command does
 
 ```bash
-vibetrace contract-delta
-vibetrace contract-delta vt_204718_a91f3c --json
+patchoath contract-delta
+patchoath contract-delta po_204718_a91f3c --json
 ```
 
 The command:
@@ -26,13 +26,13 @@ Nothing is written back to the checkpoint or repository authorization. The outpu
 
 ## Restricted proposal vocabulary
 
-VibeTrace intentionally refuses to synthesize an arbitrary access-control policy.
+PatchOath intentionally refuses to synthesize an arbitrary access-control policy.
 
 It can propose only:
 
 ### Exact observed path grants
 
-When an existing `--allow` boundary excludes a changed file, VibeTrace may propose adding that exact observed repository path.
+When an existing `--allow` boundary excludes a changed file, PatchOath may propose adding that exact observed repository path.
 
 ```text
 before allow:
@@ -47,11 +47,11 @@ proposed addition:
 
 It does not generalize this to `src/shared/**` because the broader glob grants authority that the captured effect did not demonstrate a need for.
 
-If a literal Git path contains `*`, the current glob-based contract language cannot safely represent it as an exact grant. VibeTrace returns a human-review blocker instead of silently widening the pattern.
+If a literal Git path contains `*`, the current glob-based contract language cannot safely represent it as an exact grant. PatchOath returns a human-review blocker instead of silently widening the pattern.
 
 ### Budget increases to observed totals
 
-For an exceeded numeric budget, VibeTrace proposes only the exact observed total:
+For an exceeded numeric budget, PatchOath proposes only the exact observed total:
 
 ```text
 maxFiles    3 → 5   when exactly 5 files changed
@@ -89,13 +89,13 @@ candidate contract → same effect     → compliant
 
 A `proposal-ready` result therefore means only:
 
-> Within VibeTrace's restricted proposal vocabulary, this candidate is sufficient for this exact previously observed effect and does not require relaxing a deny/protected-surface rule.
+> Within PatchOath's restricted proposal vocabulary, this candidate is sufficient for this exact previously observed effect and does not require relaxing a deny/protected-surface rule.
 
 It does **not** mean the change was desirable, safe, correct, or should be approved for future work.
 
 ## Proposal Receipt
 
-Each computed result gets a deterministic `vtcd_*` proposal receipt bound to:
+Each computed result gets a deterministic `pocd_*` proposal receipt bound to:
 
 - the source Evidence Receipt ID;
 - the original Change Contract hash;
@@ -118,7 +118,7 @@ gitEffectRecomputed = true
   → the file effect used by the proposal came from the recorded before/after Git objects
 ```
 
-Those statements are narrower than the full `vibetrace verify` command, which also checks VibeTrace private refs and local visual artifacts when applicable.
+Those statements are narrower than the full `patchoath verify` command, which also checks PatchOath private refs and local visual artifacts when applicable.
 
 The delta command does not label the entire checkpoint “fully verified” merely because these two prerequisites succeeded.
 
@@ -132,13 +132,13 @@ Tests intentionally save a checkpoint whose cached file array is empty while its
 
 ## Minimality claim
 
-Access-control policy repair and least-privilege synthesis are established research areas. VibeTrace does not claim to compute a globally minimal policy.
+Access-control policy repair and least-privilege synthesis are established research areas. PatchOath does not claim to compute a globally minimal policy.
 
 Its claim is narrower and mechanically testable:
 
 > The `restricted-local-delta-v1` proposal is minimal only inside a deliberately constrained vocabulary consisting of exact observed file additions and numeric-budget increases to observed totals, while deny rules and protected surfaces remain immutable.
 
-Different policy languages could express different or more globally optimal repairs. VibeTrace chooses a small proposal language because its output is intended for human review, not autonomous privilege escalation.
+Different policy languages could express different or more globally optimal repairs. PatchOath chooses a small proposal language because its output is intended for human review, not autonomous privilege escalation.
 
 ## Related-work boundary
 
@@ -160,4 +160,4 @@ counterfactual replay on the same Git effect
 human step-up decision for protected authority
 ```
 
-This should be described as VibeTrace's design composition, not as invention of least privilege or policy repair itself.
+This should be described as PatchOath's design composition, not as invention of least privilege or policy repair itself.

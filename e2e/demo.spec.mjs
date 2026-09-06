@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 
-test("the evidence workspace replays authority, review, and disclosure evidence", async ({
+const RETIRED_PRODUCT_NAME = ["Vibe", "Trace"].join("");
+const RETIRED_CLI_PREFIX = ["vibe", "trace "].join("");
+
+test("PatchOath replays authority, review, and disclosure evidence", async ({
   page,
 }) => {
   const consoleErrors = [];
@@ -10,11 +13,14 @@ test("the evidence workspace replays authority, review, and disclosure evidence"
   });
 
   await page.goto("/");
+  await expect(page.getByText("PatchOath", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Know what was asked. Bound what was allowed. Review what changed.",
+      name: /Declare the boundary\. Inspect the patch\. Prove what crossed it\./u,
     }),
   ).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(RETIRED_PRODUCT_NAME);
+  await expect(page.locator("body")).not.toContainText(RETIRED_CLI_PREFIX);
   await expect(page.locator(".timeline-item")).toHaveCount(3);
   await expect(page.locator("#blastScore")).toHaveText("92");
   await expect(page.locator("#mismatch")).toContainText("INTENT MISMATCH");
@@ -31,6 +37,7 @@ test("the evidence workspace replays authority, review, and disclosure evidence"
     "AUTHORIZATION DRIFT",
   );
   await expect(page.locator(".receipt-chip")).toContainText("EVIDENCE RECEIPT");
+  await expect(page.locator(".receipt-chip code")).toContainText("poe_");
 
   await expect(page.locator("#reviewPlane")).toContainText(
     "REVIEW CONTROL PLANE",
@@ -43,6 +50,9 @@ test("the evidence workspace replays authority, review, and disclosure evidence"
     "recomputed from objects",
   );
   await expect(page.locator(".trust-card")).toContainText("effect-manifest-v2");
+  await expect(page.locator(".trust-card .review-receipt code")).toContainText(
+    "pocd_",
+  );
   await expect(page.locator(".disclosure-card")).toContainText(
     "This browser report is not a share-safe Capsule.",
   );
@@ -50,6 +60,7 @@ test("the evidence workspace replays authority, review, and disclosure evidence"
   await expect(page.locator(".disclosure-card")).toContainText(
     "DISCLOSURE RECEIPT",
   );
+  await expect(page.locator(".disclosure-receipt code")).toContainText("pod_");
   await expect(page.locator(".historical-review-card")).toContainText(
     "Historical effect review",
   );
@@ -62,6 +73,7 @@ test("the evidence workspace replays authority, review, and disclosure evidence"
   await expect(page.locator(".historical-review-card")).toContainText(
     "identity not verified",
   );
+  await expect(page.locator(".historical-review-card")).toContainText("por_");
   await expect(
     page.locator(".historical-review-card button:not([data-history-copy])"),
   ).toHaveCount(0);
@@ -101,11 +113,12 @@ test("the evidence workspace replays authority, review, and disclosure evidence"
   expect(consoleErrors).toEqual([]);
 });
 
-test("the mobile layout does not create page-level horizontal overflow", async ({
+test("PatchOath mobile layout has no page-level horizontal overflow", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
+  await expect(page.getByText("PatchOath", { exact: true })).toBeVisible();
   await expect(page.locator("#visualStage")).toBeVisible();
   await expect(page.locator("#reviewPlane")).toBeVisible();
   await expect(page.locator(".historical-review-card")).toBeVisible();
@@ -117,20 +130,21 @@ test("the mobile layout does not create page-level horizontal overflow", async (
   expect(overflow).toBeLessThanOrEqual(1);
   await mkdir("test-results", { recursive: true });
   await page.screenshot({
-    path: "test-results/vibetrace-mobile.png",
+    path: "test-results/patchoath-mobile.png",
     fullPage: true,
   });
 });
 
-test("capture the README dashboard at a real desktop viewport", async ({
+test("capture the PatchOath dashboard at a real desktop viewport", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.goto("/");
+  await expect(page.getByText("PatchOath", { exact: true })).toBeVisible();
   await expect(page.locator(".historical-review-card")).toBeVisible();
   await mkdir("test-results", { recursive: true });
   await page.screenshot({
-    path: "test-results/vibetrace-dashboard.png",
+    path: "test-results/patchoath-dashboard.png",
     fullPage: true,
   });
 });

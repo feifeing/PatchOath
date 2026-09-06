@@ -23,17 +23,19 @@ function anchorCheckpointRefs(root, checkpoint) {
   for (const phase of ["before", "after"]) {
     git(root, [
       "update-ref",
-      `refs/vibetrace/checkpoints/${checkpoint.id}/${phase}`,
+      `refs/patchoath/checkpoints/${checkpoint.id}/${phase}`,
       checkpoint[phase].commit,
     ]);
+    checkpoint[phase].ref =
+      `refs/patchoath/checkpoints/${checkpoint.id}/${phase}`;
   }
 }
 
-function checkpointFixture(root, sessionId) {
+function checkpointFixture(root, sessionId, id = "po_verify_fixture") {
   const head = git(root, ["rev-parse", "HEAD"]);
   const checkpoint = {
     schemaVersion: 2,
-    id: "vt_verify_fixture",
+    id,
     sessionId,
     status: "completed",
     createdAt: new Date().toISOString(),
@@ -56,8 +58,8 @@ function checkpointFixture(root, sessionId) {
     },
     visual: null,
   };
-  checkpoint.receipt = createEvidenceReceipt(checkpoint);
   anchorCheckpointRefs(root, checkpoint);
+  checkpoint.receipt = createEvidenceReceipt(checkpoint);
   return checkpoint;
 }
 
@@ -65,12 +67,13 @@ function digest(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-test("receipt verification succeeds for unchanged evidence and fails after tampering", async () => {
+test("PatchOath receipt verification succeeds for unchanged evidence and fails after tampering", async () => {
   const root = await createRepository();
   const { config } = await initializeStore(root);
   const checkpoint = checkpointFixture(root, config.currentSessionId);
   await saveCheckpoint(root, checkpoint);
 
+  assert.match(checkpoint.receipt.receiptId, /^poe_/u);
   assert.equal(verifyEvidenceReceipt(checkpoint).valid, true);
 
   const stdout = memoryStream();
@@ -105,13 +108,14 @@ test("receipt verification succeeds for unchanged evidence and fails after tampe
   );
 });
 
-test("verification rejects a private checkpoint ref that drifts from stored Git evidence", async () => {
+test("verification rejects a PatchOath checkpoint ref that drifts from stored Git evidence", async () => {
   const root = await createRepository();
   const { config } = await initializeStore(root);
-  const checkpoint = checkpointFixture(root, config.currentSessionId);
-  checkpoint.id = "vt_git_verify_fixture";
-  checkpoint.receipt = createEvidenceReceipt(checkpoint);
-  anchorCheckpointRefs(root, checkpoint);
+  const checkpoint = checkpointFixture(
+    root,
+    config.currentSessionId,
+    "po_git_verify_fixture",
+  );
   await saveCheckpoint(root, checkpoint);
 
   const verifiedOut = memoryStream();
@@ -132,6 +136,11 @@ test("verification rejects a private checkpoint ref that drifts from stored Git 
         item.objectStatus === "verified" && item.refStatus === "verified",
     ),
   );
+  assert.ok(
+    verified.gitEvidence.every((item) =>
+      item.ref.startsWith("refs/patchoath/"),
+    ),
+  );
 
   await writeFile(join(root, "drift.txt"), "new commit\n", "utf8");
   git(root, ["add", "drift.txt"]);
@@ -139,7 +148,7 @@ test("verification rejects a private checkpoint ref that drifts from stored Git 
   const driftCommit = git(root, ["rev-parse", "HEAD"]);
   git(root, [
     "update-ref",
-    `refs/vibetrace/checkpoints/${checkpoint.id}/after`,
+    `refs/patchoath/checkpoints/${checkpoint.id}/after`,
     driftCommit,
   ]);
 
@@ -161,14 +170,17 @@ test("verification rejects a private checkpoint ref that drifts from stored Git 
   assert.equal(after.actualRef, driftCommit);
 });
 
-test("verification reads visual files and rejects a replaced artifact", async () => {
+test("verification reads PatchOath visual files and rejects a replaced artifact", async () => {
   const root = await createRepository();
   const { config } = await initializeStore(root);
-  const checkpoint = checkpointFixture(root, config.currentSessionId);
-  checkpoint.id = "vt_visual_verify_fixture";
-  anchorCheckpointRefs(root, checkpoint);
+  const checkpoint = checkpointFixture(
+    root,
+    config.currentSessionId,
+    "po_visual_verify_fixture",
+  );
 
-  const artifactDirectory = join(storePaths(root).artifacts, checkpoint.id);
+  const paths = storePaths(root);
+  const artifactDirectory = join(paths.artifacts, checkpoint.id);
   await mkdir(artifactDirectory, { recursive: true });
   const beforePath = join(artifactDirectory, "before.png");
   const afterPath = join(artifactDirectory, "after.png");
@@ -179,12 +191,12 @@ test("verification reads visual files and rejects a replaced artifact", async ()
 
   checkpoint.visual = {
     before: {
-      image: `.vibetrace/artifacts/${checkpoint.id}/before.png`,
+      image: `${paths.directoryName}/artifacts/${checkpoint.id}/before.png`,
       imageSha256: digest(beforeBytes),
       dom: { hash: "before-dom" },
     },
     after: {
-      image: `.vibetrace/artifacts/${checkpoint.id}/after.png`,
+      image: `${paths.directoryName}/artifacts/${checkpoint.id}/after.png`,
       imageSha256: digest(afterBytes),
       dom: { hash: "after-dom" },
     },

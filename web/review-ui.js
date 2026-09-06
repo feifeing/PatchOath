@@ -1,9 +1,9 @@
-const reportData = window.__VIBETRACE_REPORT__;
+const reportData = window.__PATCHOATH_REPORT__ || window.__VIBETRACE_REPORT__;
 const checkpointId = document.getElementById("checkpointId");
 const reviewPlane = document.getElementById("reviewPlane");
 
 if (!checkpointId || !reviewPlane) {
-  throw new Error("VibeTrace review UI could not find its host elements.");
+  throw new Error("PatchOath review UI could not find its host elements.");
 }
 
 const demoV2Coverage = {
@@ -19,7 +19,7 @@ const demoReview = {
     sourceReceipt: {
       valid: true,
       reason: "verified",
-      receiptId: "vtr_4f71a9c83e16d52a3f308cf0",
+      receiptId: "poe_4f71a9c83e16d52a3f308cf0",
       coverage: demoV2Coverage,
     },
     gitEffect: {
@@ -52,7 +52,7 @@ const demoReview = {
         },
       ],
       counterfactual: { status: "violated", violations: [] },
-      proposalReceipt: { receiptId: "vtcd_61f8f51d7c04e45f437cd10a" },
+      proposalReceipt: { receiptId: "pocd_61f8f51d7c04e45f437cd10a" },
       minimality: {
         model: "restricted-local-delta-v1",
         neverProposed: [
@@ -73,14 +73,14 @@ const demoReview = {
         "promptText",
         "visualArtifactBytes",
       ],
-      receiptId: "vtd_84cbf2ce83e3a0d174fd0391",
+      receiptId: "pod_84cbf2ce83e3a0d174fd0391",
     },
   },
   "203229_8d0c42": {
     sourceReceipt: {
       valid: true,
       reason: "verified",
-      receiptId: "vtr_16bbac216de20b8c011197d2",
+      receiptId: "poe_16bbac216de20b8c011197d2",
       coverage: demoV2Coverage,
     },
     gitEffect: {
@@ -97,7 +97,7 @@ const demoReview = {
       },
       blockers: [],
       counterfactual: { status: "compliant", violations: [] },
-      proposalReceipt: { receiptId: "vtcd_40aa91a49c0f490490e4245d" },
+      proposalReceipt: { receiptId: "pocd_40aa91a49c0f490490e4245d" },
       minimality: {
         model: "restricted-local-delta-v1",
         neverProposed: [
@@ -118,14 +118,14 @@ const demoReview = {
         "promptText",
         "visualArtifactBytes",
       ],
-      receiptId: "vtd_179550353527745ec866837d",
+      receiptId: "pod_179550353527745ec866837d",
     },
   },
   "201104_4b23a8": {
     sourceReceipt: {
       valid: true,
       reason: "verified",
-      receiptId: "vtr_013e7f2c766593b63dc1d3ae",
+      receiptId: "poe_013e7f2c766593b63dc1d3ae",
       coverage: demoV2Coverage,
     },
     gitEffect: {
@@ -148,7 +148,7 @@ const demoReview = {
         "promptText",
         "visualArtifactBytes",
       ],
-      receiptId: "vtd_a9f229cc2acb8f9f12e32c70",
+      receiptId: "pod_a9f229cc2acb8f9f12e32c70",
     },
   },
 };
@@ -167,15 +167,19 @@ function displayedCheckpointKey() {
   return checkpointId.textContent.trim().replace(/^#/u, "");
 }
 
+function checkpointDisplayKey(value) {
+  return String(value || "").replace(/^(?:po|vt)_/u, "");
+}
+
 function currentCheckpoint() {
   const displayed = displayedCheckpointKey();
   if (reportData?.checkpoints?.length) {
     return reportData.checkpoints.find(
-      (checkpoint) => checkpoint.id.replace(/^vt_/u, "") === displayed,
+      (checkpoint) => checkpointDisplayKey(checkpoint.id) === displayed,
     );
   }
   return {
-    id: `vt_${displayed}`,
+    id: `po_${displayed}`,
     review: demoReview[displayed] || demoReview["204718_a91f3c"],
   };
 }
@@ -335,7 +339,7 @@ function renderDisclosure(checkpoint, review) {
   }
   const omitted = disclosure.omitted || [];
   const receipt = disclosure.receiptId;
-  const command = `vibetrace capsule ${checkpoint.id || ""}`.trim();
+  const command = `patchoath capsule ${checkpoint.id || ""}`.trim();
 
   return `
     <div class="disclosure-warning">

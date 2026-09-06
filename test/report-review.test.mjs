@@ -39,7 +39,7 @@ function analysisFixture() {
     risk: {
       score: 19,
       level: "low",
-      model: "vibetrace-evidence-risk-v2",
+      model: "patchoath-evidence-risk-v2",
       factors: [],
     },
     visual: null,
@@ -67,7 +67,7 @@ async function checkpointFixture() {
 
   const checkpoint = {
     schemaVersion: 2,
-    id: "vt_report_review_fixture",
+    id: "po_report_review_fixture",
     sessionId: "session_report_review",
     status: "completed",
     createdAt: "2026-09-03T09:00:00.000Z",
@@ -109,7 +109,7 @@ async function addHistoricalReview(root, checkpoint) {
 }
 
 function parseReportData(source) {
-  const prefix = "window.__VIBETRACE_REPORT__ = ";
+  const prefix = "window.__PATCHOATH_REPORT__ = ";
   assert.ok(source.startsWith(prefix));
   return JSON.parse(source.slice(prefix.length).replace(/;\s*$/u, ""));
 }
@@ -149,11 +149,16 @@ test("generated reports derive review evidence and historical human outcomes", a
     rendered.review.contractDelta.counterfactual.status,
     "compliant",
   );
+  assert.match(
+    rendered.review.contractDelta.proposalReceipt.receiptId,
+    /^pocd_[a-f0-9]{24}$/u,
+  );
 
   const historical = rendered.review.historicalEffectReview;
   assert.equal(historical.status, "record-linked");
   assert.equal(historical.count, 1);
   assert.equal(historical.latest.record.recordId, historicalRecord.recordId);
+  assert.match(historicalRecord.recordId, /^por_[a-f0-9]{24}$/u);
   assert.equal(historical.latest.record.disposition, "accept-effect");
   assert.equal(historical.latest.integrity.valid, true);
   assert.equal(historical.sourceReceiptCurrent.valid, true);
@@ -162,14 +167,14 @@ test("generated reports derive review evidence and historical human outcomes", a
   assert.equal(historical.authorityBoundary.futureAuthorityGranted, false);
   assert.equal(
     historical.fullVerifyCommand,
-    `vibetrace review --verify ${historicalRecord.recordId}`,
+    `patchoath review --verify ${historicalRecord.recordId}`,
   );
 
   assert.equal(rendered.review.disclosure.status, "verified");
   assert.equal(rendered.review.disclosure.mode, "minimum-disclosure");
   assert.ok(rendered.review.disclosure.omitted.includes("promptText"));
   assert.ok(rendered.review.disclosure.omitted.includes("filePaths"));
-  assert.match(rendered.review.disclosure.receiptId, /^vtd_[a-f0-9]{24}$/u);
+  assert.match(rendered.review.disclosure.receiptId, /^pod_[a-f0-9]{24}$/u);
 
   assert.match(source, /Project Nightjar/u);
   assert.match(source, /Review Fixture/u);

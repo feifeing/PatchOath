@@ -88,5 +88,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`VibeTrace running at http://${host}:${port}`);
+  console.log(`PatchOath running at http://${host}:${port}`);
 });

@@ -8,8 +8,8 @@ import {
 import { listCheckpoints, storePaths } from "./core/store.mjs";
 import { findRepositoryRoot } from "./git/git.mjs";
 
-const HELP = `vibetrace capsule [checkpoint] [options]
-vibetrace capsule --verify <file> [--json]
+const HELP = `patchoath capsule [checkpoint] [options]
+patchoath capsule --verify <file> [--json]
 
 Create a privacy-first Evidence Capsule from a completed checkpoint. By default the capsule omits prompt text, file paths, contract patterns, source patches, and visual artifact bytes while preserving a link to the source Evidence Receipt.
 
@@ -97,7 +97,7 @@ async function verifyFile(path, stdout, json) {
   } else {
     stdout.write("\n");
     stdout.write(
-      `✦ VibeTrace disclosure ${verification.valid ? "VERIFIED" : "FAILED"}\n`,
+      `✦ PatchOath disclosure ${verification.valid ? "VERIFIED" : "FAILED"}\n`,
     );
     stdout.write(`  reason   ${verification.reason}\n`);
     stdout.write(
@@ -158,7 +158,7 @@ export async function runCapsule(
       stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     } else {
       stdout.write("\n");
-      stdout.write(`✦ VibeTrace Evidence Capsule ${checkpoint.id}\n`);
+      stdout.write(`✦ PatchOath Evidence Capsule ${checkpoint.id}\n`);
       stdout.write(`  output    ${outputPath}\n`);
       stdout.write(`  source    ${checkpoint.receipt.receiptId}\n`);
       stdout.write(`  disclosure ${capsule.disclosureReceipt.receiptId}\n`);

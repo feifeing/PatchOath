@@ -8,10 +8,10 @@ export function git(root, args) {
 }
 
 export async function createRepository() {
-  const root = await mkdtemp(join(tmpdir(), "vibetrace-test-"));
+  const root = await mkdtemp(join(tmpdir(), "patchoath-test-"));
   git(root, ["init", "-b", "main"]);
-  git(root, ["config", "user.name", "VibeTrace Test"]);
-  git(root, ["config", "user.email", "test@vibetrace.local"]);
+  git(root, ["config", "user.name", "PatchOath Test"]);
+  git(root, ["config", "user.email", "test@patchoath.local"]);
   await writeFile(join(root, "app.js"), "export const value = 1;\n", "utf8");
   git(root, ["add", "app.js"]);
   git(root, ["commit", "-m", "initial"]);

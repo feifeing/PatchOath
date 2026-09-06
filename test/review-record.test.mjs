@@ -5,7 +5,8 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRepository } from "../test-support/helpers.mjs";
 
-const cli = resolve("bin/vibetrace.mjs");
+const cli = resolve("bin/patchoath.mjs");
+const store = ".patchoath";
 
 function run(root, args) {
   return execFileSync(process.execPath, [cli, ...args], {
@@ -24,9 +25,9 @@ function runResult(root, args) {
 }
 
 async function checkpointPath(root) {
-  const names = await readdir(join(root, ".vibetrace", "checkpoints"));
+  const names = await readdir(join(root, store, "checkpoints"));
   assert.equal(names.length, 1);
-  return join(root, ".vibetrace", "checkpoints", names[0]);
+  return join(root, store, "checkpoints", names[0]);
 }
 
 async function createViolatedCheckpoint(root) {
@@ -62,6 +63,7 @@ test("historical acceptance is stored separately and cannot mutate future author
   const checkpointBefore = await readFile(path, "utf8");
   const deltaBefore = JSON.parse(run(root, ["contract-delta", "--json"]));
   assert.equal(deltaBefore.status, "proposal-ready");
+  assert.match(deltaBefore.proposalReceipt.receiptId, /^pocd_/u);
 
   const result = JSON.parse(
     run(root, [
@@ -77,7 +79,7 @@ test("historical acceptance is stored separately and cannot mutate future author
 
   assert.equal(result.created, true);
   assert.equal(result.record.disposition, "accept-effect");
-  assert.match(result.record.recordId, /^vrr_[a-f0-9]{24}$/u);
+  assert.match(result.record.recordId, /^por_[a-f0-9]{24}$/u);
   assert.equal(result.authorityBoundary.historicalEffectOnly, true);
   assert.equal(result.authorityBoundary.changeContractMutated, false);
   assert.equal(result.authorityBoundary.futureAuthorityGranted, false);
@@ -106,7 +108,7 @@ test("historical acceptance is stored separately and cannot mutate future author
   assert.equal(verification.authorityBoundary.futureAuthorityGranted, false);
 });
 
-test("tampered review records fail verification", async (context) => {
+test("tampered PatchOath review records fail verification", async (context) => {
   const root = await createRepository();
   context.after(() => rm(root, { recursive: true, force: true }));
   await createViolatedCheckpoint(root);
@@ -116,7 +118,7 @@ test("tampered review records fail verification", async (context) => {
   );
   const reviewPath = join(
     root,
-    ".vibetrace",
+    store,
     "reviews",
     `${created.record.recordId}.json`,
   );

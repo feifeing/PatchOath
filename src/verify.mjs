@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
+import { checkpointRefCandidates } from "./core/brand.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import { listCheckpoints } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 
-const HELP = `vibetrace verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Receipt coverage is versioned; legacy v1 receipts remain verifiable with their original, narrower scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
+const HELP = `patchoath verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Receipt coverage is versioned; pre-v0.3 receipts and refs remain verifiable with their original scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
 
 function parse(argv) {
   const options = new Set();
@@ -46,6 +47,30 @@ async function sha256File(path) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function resolveSnapshotRef(root, checkpoint, phase, commit) {
+  const candidates = checkpointRefCandidates(checkpoint, phase);
+  let firstMissing = candidates[0] || null;
+  for (const ref of candidates) {
+    try {
+      const actualRef = runGit(root, ["rev-parse", "--verify", ref]).trim();
+      return {
+        ref,
+        actualRef,
+        refStatus: actualRef === commit ? "verified" : "mismatch",
+        candidates,
+      };
+    } catch {
+      firstMissing ||= ref;
+    }
+  }
+  return {
+    ref: firstMissing,
+    actualRef: null,
+    refStatus: "missing",
+    candidates,
+  };
+}
+
 function verifyGitEvidence(root, checkpoint) {
   const checks = [];
   for (const phase of ["before", "after"]) {
@@ -59,23 +84,15 @@ function verifyGitEvidence(root, checkpoint) {
       objectStatus = "missing";
     }
 
-    const ref = `refs/vibetrace/checkpoints/${checkpoint.id}/${phase}`;
-    let actualRef = null;
-    let refStatus = "verified";
-    try {
-      actualRef = runGit(root, ["rev-parse", "--verify", ref]).trim();
-      if (actualRef !== commit) refStatus = "mismatch";
-    } catch {
-      refStatus = "missing";
-    }
-
+    const refResult = resolveSnapshotRef(root, checkpoint, phase, commit);
     checks.push({
       phase,
       commit,
       objectStatus,
-      ref,
-      actualRef,
-      refStatus,
+      ref: refResult.ref,
+      refCandidates: refResult.candidates,
+      actualRef: refResult.actualRef,
+      refStatus: refResult.refStatus,
     });
   }
   return checks;

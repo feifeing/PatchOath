@@ -140,7 +140,7 @@ export async function compareVisualCaptures({
     semantic: {
       supported: false,
       reason:
-        "VibeTrace v0.2 does not infer whether a visual or DOM change is semantically correct.",
+        "PatchOath v0.3 does not infer whether a visual or DOM change is semantically correct.",
     },
   };
 }

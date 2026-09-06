@@ -1,5 +1,5 @@
 name: Focused feature proposal
-description: Propose an improvement to the prompt-to-evidence workflow.
+description: Propose an improvement to PatchOath's authority-to-evidence workflow.
 title: "proposal: "
 labels: [enhancement]
 body:
@@ -7,7 +7,7 @@ body:
     id: problem
     attributes:
       label: Developer problem
-      description: What question about an AI-generated change is currently hard to answer?
+      description: What question about an AI-assisted change is currently hard to answer?
     validations:
       required: true
   - type: dropdown
@@ -15,12 +15,14 @@ body:
     attributes:
       label: Evidence-chain stage
       options:
-        - Prompt intent
-        - Code change
-        - Blast Radius
-        - Visual evidence
-        - Regression risk
-        - Replay or restore
+        - Intent context
+        - Execution authority / Change Contract
+        - Observed Git or visual effect
+        - Evidence integrity / verification
+        - Mechanical review / Contract Delta
+        - Historical human review
+        - Disclosure boundary / Capsule
+        - Guarded restore
     validations:
       required: true
   - type: textarea
@@ -34,6 +36,6 @@ body:
     id: boundaries
     attributes:
       label: Accuracy and product boundaries
-      description: What could this misclassify, and what should VibeTrace explicitly not claim?
+      description: What could this misclassify, what authority must it not silently grant, and what should PatchOath explicitly not claim?
     validations:
       required: true

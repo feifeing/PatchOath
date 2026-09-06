@@ -5,18 +5,18 @@ import { collectCommitDiff } from "./git/diff.mjs";
 import { findRepositoryRoot, repositoryMetadata } from "./git/git.mjs";
 import { createWorktreeSnapshot } from "./git/snapshot.mjs";
 
-const HELP = `VibeTrace attest — verify an explicit change contract against the current worktree
+const HELP = `PatchOath attest — verify an explicit Change Contract against the current worktree
 
 Usage:
-  vibetrace attest --prompt "Change the button color" \\
+  patchoath attest --prompt "Change the button color" \\
     --allow "src/components/**,src/styles/**" \\
     --deny "src/router/**" \\
     --protect-surface "auth,database,dependencies,ci" \\
     --max-files 3 --max-lines 80 --max-modules 2 [--json]
 
 The contract is user-declared authorization, not inferred intent. Protected surfaces use
-VibeTrace's deterministic repository classifiers. VibeTrace compares the contract with
-HEAD → current worktree, reports scope drift, and emits a deterministic evidence receipt.`;
+PatchOath's deterministic repository classifiers. PatchOath compares the contract with
+HEAD → current worktree, reports Authorization Drift, and emits a deterministic Evidence Receipt.`;
 
 function parse(argv) {
   const options = {};
@@ -48,41 +48,43 @@ function parse(argv) {
   return options;
 }
 
-function printHuman(checkpoint) {
+function printHuman(checkpoint, stdout) {
   const analysis = checkpoint.analysis;
   const contract = checkpoint.authorization;
   const compliance = analysis.contractCompliance;
-  console.log("");
-  console.log(`✦ VibeTrace scope attestation ${checkpoint.receipt.receiptId}`);
-  console.log(`  prompt       ${checkpoint.prompt.text}`);
-  console.log(
-    `  contract     allow=${contract.allow.join(",") || "*"} deny=${contract.deny.join(",") || "none"}`,
+  stdout.write("\n");
+  stdout.write(
+    `✦ PatchOath scope attestation ${checkpoint.receipt.receiptId}\n`,
+  );
+  stdout.write(`  prompt       ${checkpoint.prompt.text}\n`);
+  stdout.write(
+    `  contract     allow=${contract.allow.join(",") || "*"} deny=${contract.deny.join(",") || "none"}\n`,
   );
   if (contract.protectedSurfaces.length > 0) {
-    console.log(`  protected    ${contract.protectedSurfaces.join(", ")}`);
+    stdout.write(`  protected    ${contract.protectedSurfaces.join(", ")}\n`);
   }
-  console.log(
-    `  observed     ${analysis.summary.filesChanged} files · ${analysis.summary.linesChanged} lines · ${analysis.summary.modulesChanged} modules`,
+  stdout.write(
+    `  observed     ${analysis.summary.filesChanged} files · ${analysis.summary.linesChanged} lines · ${analysis.summary.modulesChanged} modules\n`,
   );
-  console.log(`  compliance   ${compliance.status.toUpperCase()}`);
+  stdout.write(`  compliance   ${compliance.status.toUpperCase()}\n`);
   for (const violation of compliance.violations) {
-    console.log(`  ! ${violation.detail}`);
+    stdout.write(`  ! ${violation.detail}\n`);
   }
-  console.log(
-    `  blast        ${analysis.blastRadius.level.toUpperCase()} (${analysis.blastRadius.score}/100)`,
+  stdout.write(
+    `  blast        ${analysis.blastRadius.level.toUpperCase()} (${analysis.blastRadius.score}/100)\n`,
   );
-  console.log(
-    `  risk         ${analysis.risk.level.toUpperCase()} (${analysis.risk.score}/100)`,
+  stdout.write(
+    `  risk         ${analysis.risk.level.toUpperCase()} (${analysis.risk.score}/100)\n`,
   );
-  console.log(`  before       ${checkpoint.before.commit}`);
-  console.log(`  after        ${checkpoint.after.commit}`);
-  console.log("");
+  stdout.write(`  before       ${checkpoint.before.commit}\n`);
+  stdout.write(`  after        ${checkpoint.after.commit}\n\n`);
 }
 
-export async function runAttest(argv) {
+export async function runAttest(argv, io = {}) {
+  const stdout = io.stdout || process.stdout;
   const options = parse(argv);
   if (options["--help"] || options["-h"]) {
-    console.log(HELP);
+    stdout.write(`${HELP}\n`);
     return 0;
   }
 
@@ -102,7 +104,7 @@ export async function runAttest(argv) {
     );
   }
 
-  const root = findRepositoryRoot(process.cwd());
+  const root = findRepositoryRoot(io.cwd || process.cwd());
   const repository = repositoryMetadata(root);
   const afterSnapshot = await createWorktreeSnapshot(root, "attestation after");
   const files = collectCommitDiff(root, repository.head, afterSnapshot.commit);
@@ -123,8 +125,9 @@ export async function runAttest(argv) {
   };
   checkpoint.receipt = createEvidenceReceipt(checkpoint);
 
-  if (options["--json"]) console.log(JSON.stringify(checkpoint, null, 2));
-  else printHuman(checkpoint);
+  if (options["--json"])
+    stdout.write(`${JSON.stringify(checkpoint, null, 2)}\n`);
+  else printHuman(checkpoint, stdout);
   return checkpoint.analysis.contractCompliance.status === "violated" ? 2 : 0;
 }
 

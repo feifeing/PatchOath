@@ -37,7 +37,7 @@ function normalizeTextForGitComparison(value) {
   return value.replaceAll("\r\n", "\n");
 }
 
-const temporaryRoot = await mkdtemp(join(tmpdir(), "vibetrace-package-smoke-"));
+const temporaryRoot = await mkdtemp(join(tmpdir(), "patchoath-package-smoke-"));
 
 try {
   const packDirectory = join(temporaryRoot, "pack");
@@ -57,6 +57,7 @@ try {
   const paths = packed.files.map((file) => file.path);
   for (const required of [
     "package.json",
+    "bin/patchoath.mjs",
     "bin/vibetrace.mjs",
     "src/cli.mjs",
     "README.md",
@@ -68,6 +69,7 @@ try {
   }
   for (const forbiddenPrefix of [
     ".github/",
+    ".patchoath/",
     ".vibetrace/",
     "e2e/",
     "scripts/",
@@ -86,7 +88,7 @@ try {
   await writeFile(
     join(consumer, "package.json"),
     JSON.stringify(
-      { name: "vibetrace-package-consumer", private: true },
+      { name: "patchoath-package-consumer", private: true },
       null,
       2,
     ),
@@ -104,9 +106,11 @@ try {
     { cwd: consumer },
   );
 
-  const installedRoot = join(consumer, "node_modules", "vibetrace");
-  const cli = join(installedRoot, "bin", "vibetrace.mjs");
-  assert.equal(runCli(cli, consumer, ["--version"]), "0.2.0");
+  const installedRoot = join(consumer, "node_modules", "patchoath");
+  const cli = join(installedRoot, "bin", "patchoath.mjs");
+  const legacyCli = join(installedRoot, "bin", "vibetrace.mjs");
+  assert.equal(runCli(cli, consumer, ["--version"]), "0.3.0");
+  assert.equal(runCli(legacyCli, consumer, ["--version"]), "0.3.0");
 
   const project = join(consumer, "project");
   await mkdir(project, { recursive: true });
@@ -114,7 +118,7 @@ try {
   run(git, ["config", "user.email", "package-smoke@example.invalid"], {
     cwd: project,
   });
-  run(git, ["config", "user.name", "VibeTrace Package Smoke"], {
+  run(git, ["config", "user.name", "PatchOath Package Smoke"], {
     cwd: project,
   });
   await writeFile(join(project, "app.js"), "export const value = 1;\n", "utf8");
@@ -122,6 +126,7 @@ try {
   run(git, ["commit", "-m", "initial"], { cwd: project });
 
   runCli(cli, project, ["init"]);
+  await readFile(join(project, ".patchoath", "config.json"), "utf8");
   runCli(cli, project, [
     "checkpoint",
     "--prompt",
@@ -140,6 +145,14 @@ try {
     true,
     "packed CLI should verify its checkpoint",
   );
+  assert.match(verification.checkpointId, /^po_/u);
+  assert.match(verification.receipt.actualReceiptId, /^poe_[a-f0-9]{24}$/u);
+  assert.ok(
+    verification.gitEvidence.every((item) =>
+      item.ref.startsWith("refs/patchoath/checkpoints/"),
+    ),
+    "new checkpoints should resolve through the PatchOath Git ref namespace",
+  );
 
   const contractDelta = JSON.parse(
     runCli(cli, project, ["contract-delta", "--json"]),
@@ -147,6 +160,7 @@ try {
   assert.equal(contractDelta.status, "already-compliant");
   assert.equal(contractDelta.sourceReceiptVerified, true);
   assert.equal(contractDelta.gitEffectRecomputed, true);
+  assert.match(contractDelta.proposalReceipt.receiptId, /^pocd_[a-f0-9]{24}$/u);
 
   const review = JSON.parse(
     runCli(cli, project, [
@@ -158,6 +172,7 @@ try {
     ]),
   );
   assert.equal(review.created, true);
+  assert.match(review.record.recordId, /^por_[a-f0-9]{24}$/u);
   assert.equal(review.authorityBoundary.futureAuthorityGranted, false);
   assert.equal(review.reviewerIdentityVerified, false);
   const reviewVerification = JSON.parse(
@@ -179,6 +194,7 @@ try {
   );
 
   const capsuleResult = JSON.parse(runCli(cli, project, ["capsule", "--json"]));
+  assert.match(capsuleResult.disclosureReceiptId, /^pod_[a-f0-9]{24}$/u);
   const capsuleBytes = await readFile(capsuleResult.path, "utf8");
   assert.equal(
     capsuleBytes.includes("Package smoke change"),

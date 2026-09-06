@@ -10,7 +10,7 @@ import { listCheckpoints } from "./core/store.mjs";
 import { findRepositoryRoot } from "./git/git.mjs";
 import { runVerify } from "./verify.mjs";
 
-const HELP = `vibetrace review [checkpoint] <decision> [options]
+const HELP = `patchoath review [checkpoint] <decision> [options]
 
 Record or inspect a human review of an already-observed checkpoint effect.
 A review is retrospective only: it never changes the Change Contract or grants future agent authority.
@@ -26,7 +26,7 @@ Actions:
 
 Options:
   --note <text>        Optional local review rationale
-  --reviewer <label>   Optional claimed reviewer label; VibeTrace does not verify identity
+  --reviewer <label>   Optional claimed reviewer label; PatchOath does not verify identity
   --json               Emit machine-readable JSON
   -h, --help           Show help`;
 

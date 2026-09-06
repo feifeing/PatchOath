@@ -175,9 +175,9 @@ test("module-budget violations feed the existing authorization-drift risk factor
   );
 });
 
-test("evidence receipts are deterministic for the same evidence", () => {
+test("evidence receipts are deterministic for the same modern evidence", () => {
   const checkpoint = {
-    id: "vt_example",
+    id: "po_example",
     sessionId: "session-example",
     prompt: { text: "Change the button color", source: "manual-cli" },
     authorization: createChangeContract({ allow: "src/components/**" }),
@@ -196,5 +196,5 @@ test("evidence receipts are deterministic for the same evidence", () => {
   const first = createEvidenceReceipt(checkpoint);
   const second = createEvidenceReceipt(structuredClone(checkpoint));
   assert.equal(first.receiptId, second.receiptId);
-  assert.match(first.receiptId, /^vtr_[a-f0-9]{24}$/u);
+  assert.match(first.receiptId, /^poe_[a-f0-9]{24}$/u);
 });

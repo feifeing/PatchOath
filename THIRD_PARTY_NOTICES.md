@@ -1,8 +1,8 @@
 # Third-party software notices
 
-VibeTrace is distributed under the MIT License in [`LICENSE`](LICENSE). This file records third-party software used by the current repository so release and contribution reviews have an inspectable baseline.
+PatchOath is distributed under the MIT License in [`LICENSE`](LICENSE). This file records third-party software used by the current repository so release and contribution reviews have an inspectable baseline.
 
-The current npm package does **not** bundle `node_modules` or browser binaries. The packages below are development or optional local tooling resolved through npm. Their upstream licenses remain their own.
+The current package does **not** bundle `node_modules` or browser binaries. The packages below are development or optional local tooling resolved through npm. Their upstream licenses remain their own.
 
 | Component                                             | Current role                                                        | License    | Upstream                                |
 | ----------------------------------------------------- | ------------------------------------------------------------------- | ---------- | --------------------------------------- |
@@ -13,10 +13,14 @@ The current npm package does **not** bundle `node_modules` or browser binaries. 
 
 ## Browser binaries
 
-`npx playwright install chromium` downloads browser software separately from this repository. Browser binaries are not authored by VibeTrace and may contain components governed by their own licenses, notices, and redistribution terms. VibeTrace's MIT License does not relicense those binaries.
+`npx playwright install chromium` downloads browser software separately from this repository. Browser binaries are not authored by PatchOath and may contain components governed by their own licenses, notices, and redistribution terms. PatchOath's MIT License does not relicense those binaries.
+
+## Project-owned assets
+
+The PatchOath vector mark and Dashboard interface assets maintained in this repository are project-authored assets unless an asset-specific provenance entry states otherwise. See [`docs/asset-provenance.md`](docs/asset-provenance.md).
 
 ## Release rule
 
 Adding a dependency, vendored source file, copied example, icon, font, image, dataset, browser binary, or other redistributed third-party material requires a source-and-license review before merge. Update this notice when the reviewed third-party baseline changes.
 
-The automated rights check intentionally treats an unknown package license as a review event rather than silently assuming compatibility.
+The automated rights check intentionally treats an unknown package license, bundled font, or remote Dashboard asset as a review event rather than silently assuming compatibility.

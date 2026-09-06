@@ -25,7 +25,7 @@ function checkpointFixture(root, sessionId) {
   const head = git(root, ["rev-parse", "HEAD"]);
   const checkpoint = {
     schemaVersion: 2,
-    id: "vt_disclosure_fixture",
+    id: "po_disclosure_fixture",
     sessionId,
     status: "completed",
     createdAt: "2026-09-03T00:00:00.000Z",
@@ -79,7 +79,7 @@ function checkpointFixture(root, sessionId) {
       risk: {
         score: 7,
         level: "low",
-        model: "vibetrace-evidence-risk-v2",
+        model: "patchoath-evidence-risk-v2",
         factors: [
           {
             id: "file-scope",
@@ -109,7 +109,7 @@ test("minimum-disclosure capsule omits prompt, paths, and contract patterns by d
   assert.equal(capsule.evidence.prompt.text, undefined);
   assert.equal(capsule.evidence.files, undefined);
   assert.equal(capsule.evidence.authorization.contract, undefined);
-  assert.match(capsule.disclosureReceipt.receiptId, /^vtd_[a-f0-9]{24}$/u);
+  assert.match(capsule.disclosureReceipt.receiptId, /^pod_[a-f0-9]{24}$/u);
   assert.equal(auditDisclosureCapsule(capsule).valid, true);
   assert.equal(verifyDisclosureCapsule(capsule).valid, true);
 });

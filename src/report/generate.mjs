@@ -69,7 +69,7 @@ function buildHistoricalReview(checkpoint, records, sourceVerification) {
       reason: sourceVerification.reason,
     },
     reportVerificationScope: "record-integrity-plus-source-receipt",
-    fullVerifyCommand: `vibetrace review --verify ${latest.record.recordId}`,
+    fullVerifyCommand: `patchoath review --verify ${latest.record.recordId}`,
     authorityBoundary: {
       historicalEffectOnly: true,
       changeContractMutated: false,
@@ -188,6 +188,7 @@ export async function generateReport(root, checkpoints, selectedId) {
   for (const name of [
     "index.html",
     "styles.css",
+    "brand.css",
     "contract.css",
     "review.css",
     "historical-review.css",
@@ -217,6 +218,7 @@ export async function generateReport(root, checkpoints, selectedId) {
 
   const historicalRecords = await listHistoricalEffectReviews(root);
   const payload = {
+    product: "PatchOath",
     mode: "report",
     selectedId: selected.id,
     generatedAt: new Date().toISOString(),
@@ -226,7 +228,7 @@ export async function generateReport(root, checkpoints, selectedId) {
   };
   await writeFile(
     join(reportDirectory, "report-data.js"),
-    `window.__VIBETRACE_REPORT__ = ${JSON.stringify(payload, null, 2)};\n`,
+    `window.__PATCHOATH_REPORT__ = ${JSON.stringify(payload, null, 2)};\n`,
     "utf8",
   );
 

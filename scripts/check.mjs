@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const ignoredDirectories = new Set([
   ".git",
+  ".patchoath",
   ".vibetrace",
   "node_modules",
   "playwright-report",
@@ -37,11 +38,17 @@ for (const path of files) {
 const packageJson = JSON.parse(
   await readFile(join(root, "package.json"), "utf8"),
 );
-if (packageJson.version !== "0.2.0")
-  throw new Error("package.json version must match the v0.2 CLI.");
+if (packageJson.version !== "0.3.0")
+  throw new Error("package.json version must match the PatchOath v0.3 CLI.");
+if (packageJson.name !== "patchoath")
+  throw new Error("package.json name must be patchoath.");
+if (packageJson.bin?.patchoath !== "./bin/patchoath.mjs")
+  throw new Error("The patchoath bin entry is missing.");
 if (packageJson.bin?.vibetrace !== "./bin/vibetrace.mjs")
-  throw new Error("The vibetrace bin entry is missing.");
+  throw new Error(
+    "The temporary legacy vibetrace compatibility bin is missing.",
+  );
 
 console.log(
-  `Checked ${files.length} files: JavaScript syntax and JSON are valid.`,
+  `Checked ${files.length} files: JavaScript syntax and JSON are valid for PatchOath v0.3.`,
 );
