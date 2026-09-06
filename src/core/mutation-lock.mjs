@@ -27,7 +27,8 @@ export function classifyMutationOperation(argv) {
   if (command === "checkpoint") return "checkpoint";
   if (command === "report") return "report";
   if (command === "session" && argv[1] === "new") return "session new";
-  if (command === "restore" && argv.includes("--apply")) return "restore --apply";
+  if (command === "restore" && argv.includes("--apply"))
+    return "restore --apply";
   if (command === "capsule" && !argv.includes("--verify")) return "capsule";
   if (
     command === "review" &&
