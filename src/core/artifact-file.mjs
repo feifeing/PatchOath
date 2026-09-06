@@ -1,11 +1,14 @@
 import { createHash } from "node:crypto";
 import { lstat, readFile, realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { storePaths } from "./store.mjs";
 
 function isWithin(base, candidate) {
   const rel = relative(base, candidate);
-  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  return (
+    rel === "" ||
+    (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+  );
 }
 
 function recordedAbsolutePath(root, recordedPath) {
