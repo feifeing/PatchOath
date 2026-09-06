@@ -142,6 +142,20 @@ test("capture the PatchOath dashboard at a real desktop viewport", async ({
   await page.goto("/");
   await expect(page.getByText("PatchOath", { exact: true })).toBeVisible();
   await expect(page.locator(".historical-review-card")).toBeVisible();
+
+  const workspace = await page.locator(".workspace").boundingBox();
+  expect(workspace).not.toBeNull();
+  expect(workspace.height).toBeGreaterThanOrEqual(770);
+  expect(workspace.height).toBeLessThanOrEqual(790);
+
+  const impactScroll = await page
+    .locator(".impact-panel")
+    .evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+  expect(impactScroll.scrollHeight).toBeGreaterThan(impactScroll.clientHeight);
+
   await mkdir("test-results", { recursive: true });
   await page.screenshot({
     path: "test-results/patchoath-dashboard.png",

@@ -1,0 +1,60 @@
+/* Final presentation refinements for the PatchOath evidence workspace.
+ * Keep this layer visual-only: no evidence semantics or interaction logic live here.
+ */
+
+@media (min-width: 1261px) {
+  .workspace {
+    height: 780px;
+    min-height: 0;
+  }
+
+  .timeline-panel,
+  .evidence-panel,
+  .impact-panel {
+    min-height: 0;
+  }
+
+  .evidence-panel {
+    overflow: hidden;
+  }
+
+  .impact-panel {
+    overscroll-behavior: contain;
+    scrollbar-color: #303642 transparent;
+    scrollbar-width: thin;
+  }
+
+  .impact-panel::-webkit-scrollbar {
+    width: 7px;
+  }
+
+  .impact-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .impact-panel::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: #303642;
+    background-clip: padding-box;
+  }
+}
+
+@media (max-width: 560px) {
+  .trace-flow {
+    min-height: 44px;
+    gap: 12px;
+  }
+
+  .flow-step {
+    font-size: 7px;
+  }
+
+  .flow-step b {
+    margin-left: 5px;
+  }
+
+  .intro-copy {
+    line-height: 1.62;
+  }
+}
