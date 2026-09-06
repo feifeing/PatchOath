@@ -1,14 +1,14 @@
 import { CHECKPOINT_ID_PREFIX, LEGACY_CHECKPOINT_ID_PREFIX } from "./brand.mjs";
+import { isPrefixedStorageId } from "./storage-key.mjs";
 
 export const CHECKPOINT_SCHEMA_VERSION = 2;
 export const CONFIG_SCHEMA_VERSION = 1;
 
-function validCheckpointId(value) {
-  if (typeof value !== "string") return false;
-  const prefixes = [CHECKPOINT_ID_PREFIX, LEGACY_CHECKPOINT_ID_PREFIX];
-  return prefixes.some((prefix) =>
-    new RegExp(`^${prefix}_[a-zA-Z0-9_-]+$`, "u").test(value),
-  );
+export function validCheckpointId(value) {
+  return isPrefixedStorageId(value, [
+    CHECKPOINT_ID_PREFIX,
+    LEGACY_CHECKPOINT_ID_PREFIX,
+  ]);
 }
 
 export function validateCheckpoint(value) {
