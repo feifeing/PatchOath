@@ -65,6 +65,26 @@ if (packageJson.license !== "MIT") {
   );
 }
 
+const licenseText = await readText("LICENSE");
+if (!licenseText.includes("Copyright (c) 2026 PatchOath contributors")) {
+  fail("LICENSE must use the current PatchOath contributor notice.");
+}
+if (/Copyright \(c\) 2026 VibeTrace contributors/u.test(licenseText)) {
+  fail("LICENSE still contains the retired VibeTrace contributor notice.");
+}
+
+const contractSource = await readText("src/core/contract.mjs");
+if (!contractSource.includes('"PATCHOATH_CHANGE_CONTRACT"')) {
+  fail(
+    "The primary runtime Change Contract environment variable must be PATCHOATH_CHANGE_CONTRACT.",
+  );
+}
+if (!contractSource.includes('"VIBETRACE_CHANGE_CONTRACT"')) {
+  fail(
+    "The v0.3 compatibility window must keep the legacy Change Contract environment fallback explicit until deliberately removed.",
+  );
+}
+
 const requiredPackageFiles = ["LICENSE", "LEGAL.md", "THIRD_PARTY_NOTICES.md"];
 for (const required of requiredPackageFiles) {
   if (!packageJson.files?.includes(required)) {
@@ -295,6 +315,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Rights/release gate passed: PatchOath package/CLI metadata match the reviewed migration baseline, unsafe output rewriting is absent, retired-brand strings are confined to explicit migration/compatibility contexts, package remains private, dependency licenses match the reviewed baseline, required notices and brand-clearance records are present, ${cssFiles.length} dashboard stylesheet(s) contain no unreviewed remote CSS assets, and no bundled fonts were found.`,
+    `Rights/release gate passed: PatchOath package/CLI/license/runtime metadata match the reviewed migration baseline, unsafe output rewriting is absent, retired-brand strings are confined to explicit migration/compatibility contexts, package remains private, dependency licenses match the reviewed baseline, required notices and brand-clearance records are present, ${cssFiles.length} dashboard stylesheet(s) contain no unreviewed remote CSS assets, and no bundled fonts were found.`,
   );
 }
