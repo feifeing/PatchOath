@@ -5,16 +5,18 @@ import {
   createDisclosurePolicy,
   verifyDisclosureCapsule,
 } from "./core/disclosure.mjs";
+import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import { listCheckpoints, storePaths } from "./core/store.mjs";
 import { findRepositoryRoot } from "./git/git.mjs";
 
 const HELP = `patchoath capsule [checkpoint] [options]
 patchoath capsule --verify <file> [--json]
 
-Create a privacy-first Evidence Capsule from a completed checkpoint. By default the capsule omits prompt text, file paths, contract patterns, source patches, and visual artifact bytes while preserving a link to the source Evidence Receipt.
+Create a privacy-first Evidence Capsule from a completed checkpoint. Source Evidence Receipt integrity is rechecked before export. By default the capsule omits prompt text, file paths, contract patterns, source patches, and visual artifact bytes while preserving a link to the source Evidence Receipt.
 
 Options:
-  --out <file>           Write to a specific path
+  --out <file>           Write to a specific path; refuses to overwrite by default
+  --force                Allow an explicit --out path to overwrite an existing file
   --include-prompt       Include the full prompt text
   --include-paths        Include changed relative file paths
   --include-contract     Include full change-contract patterns
@@ -28,6 +30,7 @@ function parse(argv) {
     includePrompt: false,
     includePaths: false,
     includeContract: false,
+    force: false,
     out: null,
     verify: null,
     help: false,
@@ -40,6 +43,7 @@ function parse(argv) {
     else if (token === "--include-prompt") options.includePrompt = true;
     else if (token === "--include-paths") options.includePaths = true;
     else if (token === "--include-contract") options.includeContract = true;
+    else if (token === "--force") options.force = true;
     else if (token === "--help" || token === "-h") options.help = true;
     else if (token === "--out" || token === "--verify") {
       const value = argv[++index];
@@ -55,10 +59,14 @@ function parse(argv) {
 
   if (positionals.length > 1)
     throw new Error(`Unexpected argument: ${positionals[1]}`);
+  if (options.force && !options.out) {
+    throw new Error("--force is only valid with an explicit --out path.");
+  }
   if (
     options.verify &&
     (positionals.length > 0 ||
       options.out ||
+      options.force ||
       options.includePrompt ||
       options.includePaths ||
       options.includeContract)
@@ -107,6 +115,33 @@ async function verifyFile(path, stdout, json) {
   return verification.valid ? 0 : 2;
 }
 
+async function writeCapsule(path, bytes, { refuseOverwrite = false } = {}) {
+  await mkdir(dirname(path), { recursive: true });
+  try {
+    await writeFile(path, bytes, {
+      encoding: "utf8",
+      flag: refuseOverwrite ? "wx" : "w",
+    });
+  } catch (error) {
+    if (error.code === "EEXIST" && refuseOverwrite) {
+      throw new Error(
+        `Output already exists: ${path}. Choose a different --out path or pass --force to replace it.`,
+      );
+    }
+    throw error;
+  }
+}
+
+function sourceReceiptFailure(checkpoint, verification) {
+  return {
+    created: false,
+    reason: "source-receipt-unverified",
+    checkpointId: checkpoint.id,
+    sourceEvidenceReceiptId: checkpoint.receipt?.receiptId || null,
+    sourceReceipt: verification,
+  };
+}
+
 export async function runCapsule(
   argv,
   {
@@ -126,6 +161,20 @@ export async function runCapsule(
 
     const root = findRepositoryRoot(cwd);
     const checkpoint = resolveCheckpoint(await listCheckpoints(root), token);
+    const sourceReceipt = verifyEvidenceReceipt(checkpoint);
+    if (!sourceReceipt.valid) {
+      const result = sourceReceiptFailure(checkpoint, sourceReceipt);
+      if (options.json) {
+        stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        stdout.write(`refused  ${checkpoint.id}\n`);
+        stdout.write(
+          `reason   source Evidence Receipt did not verify (${sourceReceipt.reason})\n`,
+        );
+      }
+      return 2;
+    }
+
     const policy = createDisclosurePolicy({
       includePrompt: options.includePrompt,
       includePaths: options.includePaths,
@@ -139,17 +188,16 @@ export async function runCapsule(
         : join(root, options.out)
       : join(defaultDirectory, `${checkpoint.id}.capsule.json`);
 
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(
-      outputPath,
-      `${JSON.stringify(capsule, null, 2)}\n`,
-      "utf8",
-    );
+    await writeCapsule(outputPath, `${JSON.stringify(capsule, null, 2)}\n`, {
+      refuseOverwrite: Boolean(options.out && !options.force),
+    });
 
     const result = {
       path: outputPath,
       checkpointId: checkpoint.id,
       sourceEvidenceReceiptId: checkpoint.receipt.receiptId,
+      sourceReceiptVerified: true,
+      sourceReceiptCoverage: sourceReceipt.coverage || null,
       disclosureReceiptId: capsule.disclosureReceipt.receiptId,
       omitted: capsule.disclosure.omitted,
       policy: capsule.disclosure.policy,
@@ -159,14 +207,14 @@ export async function runCapsule(
     } else {
       stdout.write("\n");
       stdout.write(`✦ PatchOath Evidence Capsule ${checkpoint.id}\n`);
-      stdout.write(`  output    ${outputPath}\n`);
-      stdout.write(`  source    ${checkpoint.receipt.receiptId}\n`);
+      stdout.write(`  output     ${outputPath}\n`);
+      stdout.write(`  source     ${checkpoint.receipt.receiptId} (receipt verified)\n`);
       stdout.write(`  disclosure ${capsule.disclosureReceipt.receiptId}\n`);
       stdout.write(
-        `  omitted   ${capsule.disclosure.omitted.join(", ") || "none"}\n`,
+        `  omitted    ${capsule.disclosure.omitted.join(", ") || "none"}\n`,
       );
       stdout.write(
-        "  note      minimum disclosure is the default; expanded fields require explicit flags\n",
+        "  note       minimum disclosure is the default; expanded fields require explicit flags\n",
       );
     }
     return 0;
