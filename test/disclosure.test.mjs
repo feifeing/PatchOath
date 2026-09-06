@@ -229,7 +229,7 @@ test("capsule CLI refuses to repackage checkpoint data whose source receipt no l
   assert.equal(result.created, false);
   assert.equal(result.reason, "source-receipt-unverified");
   assert.equal(result.sourceReceipt.valid, false);
-  assert.equal(result.sourceReceipt.reason, "evidence-receipt-mismatch");
+  assert.equal(result.sourceReceipt.reason, "evidence-mismatch");
 });
 
 test("explicit capsule output refuses overwrite unless --force is supplied", async () => {
