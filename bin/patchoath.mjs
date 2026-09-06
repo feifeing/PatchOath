@@ -73,32 +73,6 @@ async function runInit(stdout) {
   return 0;
 }
 
-function isHelpOrVersion(argv) {
-  return argv.some((token) =>
-    ["--help", "-h", "--version", "-v"].includes(token),
-  );
-}
-
-export function mutationOperation(argv) {
-  if (argv.length === 0 || isHelpOrVersion(argv)) return null;
-  const command = argv[0];
-  if (command === "init") return "init";
-  if (command === "checkpoint") return "checkpoint";
-  if (command === "attest") return "attest";
-  if (command === "report") return "report";
-  if (command === "session" && argv[1] === "new") return "session new";
-  if (command === "restore" && argv.includes("--apply")) return "restore --apply";
-  if (command === "capsule" && !argv.includes("--verify")) return "capsule";
-  if (
-    command === "review" &&
-    !argv.includes("--verify") &&
-    !argv.includes("--list")
-  ) {
-    return "review";
-  }
-  return null;
-}
-
 async function dispatch(topLevel, io) {
   if (topLevel.length === 1 && ["--version", "-v"].includes(topLevel[0])) {
     io.stdout.write(`${VERSION}\n`);
@@ -148,12 +122,13 @@ const io = { stdout: process.stdout, stderr: process.stderr };
 const topLevel = process.argv.slice(2);
 
 try {
-  const operation = mutationOperation(topLevel);
+  const { classifyMutationOperation, withMutationLock } =
+    await import("../src/core/mutation-lock.mjs");
+  const operation = classifyMutationOperation(topLevel);
   if (!operation) {
     process.exitCode = await dispatch(topLevel, io);
   } else {
     const { findRepositoryRoot } = await import("../src/git/git.mjs");
-    const { withMutationLock } = await import("../src/core/mutation-lock.mjs");
     const root = findRepositoryRoot(process.cwd());
     process.exitCode = await withMutationLock(root, operation, () =>
       dispatch(topLevel, io),
