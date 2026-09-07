@@ -12,9 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { createEvidenceReceipt } from "../src/core/receipt.mjs";
-import {
-  listHistoricalEffectReviews,
-} from "../src/core/review-store.mjs";
+import { listHistoricalEffectReviews } from "../src/core/review-store.mjs";
 import { readFileSafe } from "../src/core/safe-file.mjs";
 import {
   initializeStore,
@@ -120,10 +118,7 @@ test("checkpoint loading refuses a symlinked checkpoint evidence file", async (c
   const paths = storePaths(root);
   const outside = join(root, "outside-checkpoint.json");
   await writeFile(outside, `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
-  await symlink(
-    outside,
-    join(paths.checkpoints, `${checkpoint.id}.json`),
-  );
+  await symlink(outside, join(paths.checkpoints, `${checkpoint.id}.json`));
 
   await assert.rejects(
     loadCheckpoint(root, checkpoint.id),
