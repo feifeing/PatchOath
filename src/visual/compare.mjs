@@ -1,5 +1,8 @@
-import { readFile } from "node:fs/promises";
-import { writeManagedFileAtomic } from "../core/managed-file.mjs";
+import { dirname } from "node:path";
+import {
+  readManagedFile,
+  writeManagedFileAtomic,
+} from "../core/managed-file.mjs";
 
 async function loadPng() {
   try {
@@ -56,8 +59,17 @@ export async function compareVisualCaptures({
   colorThreshold = 24,
 }) {
   const { PNG } = await loadPng();
-  const beforePng = PNG.sync.read(await readFile(before.image));
-  const afterPng = PNG.sync.read(await readFile(after.image));
+  const artifactDirectory = dirname(diffOutputPath);
+  const beforeBytes = await readManagedFile(before.image, {
+    label: "Visual comparison input",
+    within: artifactDirectory,
+  });
+  const afterBytes = await readManagedFile(after.image, {
+    label: "Visual comparison input",
+    within: artifactDirectory,
+  });
+  const beforePng = PNG.sync.read(beforeBytes);
+  const afterPng = PNG.sync.read(afterBytes);
   const width = Math.max(beforePng.width, afterPng.width);
   const height = Math.max(beforePng.height, afterPng.height);
   const totalPixels = width * height;
