@@ -38,8 +38,8 @@ export function validateCheckpoint(value) {
       `id must be a stable ${CHECKPOINT_ID_PREFIX}_* identifier or legacy ${LEGACY_CHECKPOINT_ID_PREFIX}_* identifier.`,
     );
   }
-  if (!validSessionId(value.sessionId)) {
-    issues.push("sessionId must be a repository-local session_* identifier.");
+  if (typeof value.sessionId !== "string" || value.sessionId.length < 4) {
+    issues.push("sessionId is required.");
   }
   if (!["recording", "completed"].includes(value.status)) {
     issues.push("status must be recording or completed.");
