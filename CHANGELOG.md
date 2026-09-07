@@ -11,7 +11,14 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 - Require PatchOath-managed evidence-store roots and core checkpoint/session/artifact/report directories to be physical repository-local directories rather than symlinks.
 - Apply the same boundary to managed historical-review and default capsule directories while leaving explicit capsule `--out` exports user-controlled.
 - Validate per-checkpoint visual artifact directories so a nested `artifacts/<checkpoint-id>` symlink cannot redirect screenshot or diff writes.
+- Write managed JSON, review, default-capsule, screenshot, and visual-diff files through randomized exclusive temporary files plus atomic replacement; pre-existing file symlinks and non-regular destinations are rejected.
+- Capture Playwright screenshots to memory before managed persistence so the browser never writes directly through a fixed `before.png` or `after.png` path.
 - Preserve physical legacy `.vibetrace/` stores for migration compatibility.
+
+### Repository identity
+
+- Renamed the GitHub repository slug from the retired `vibetrace` working identity to `PatchOath`.
+- Updated repository-controlled security links and release-readiness records to use the new slug. The GitHub repository description still uses the earlier “time travel for vibe coding” positioning and remains a release-copy cleanup item.
 
 ## 0.3.0 — 2026-09
 
@@ -67,7 +74,7 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 
 ### Known release blockers outside the code tree
 
-- The GitHub repository slug and description still use the retired platform identity until repository Settings are updated.
+- The GitHub repository description still uses the earlier pre-release “time travel for vibe coding” positioning and should be refreshed before public launch copy is frozen.
 - `main` still requires GitHub branch-protection/ruleset enforcement so passing CI cannot be bypassed casually.
 - Patent/contributor-license governance remains an explicit pre-scale decision; the repository currently remains MIT licensed.
 
