@@ -48,7 +48,9 @@ async function waitForServer(url) {
 
 test("PatchOath captures and compares a real before/after page", async () => {
   const root = await mkdtemp(join(tmpdir(), "patchoath-e2e-"));
-  const protectedRoot = await mkdtemp(join(tmpdir(), "patchoath-e2e-protected-"));
+  const protectedRoot = await mkdtemp(
+    join(tmpdir(), "patchoath-e2e-protected-"),
+  );
   const protectedTarget = join(protectedRoot, "sentinel.txt");
   await writeFile(protectedTarget, "keep-me", "utf8");
   const port = await freePort();
