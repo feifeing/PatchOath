@@ -130,7 +130,8 @@ test("report checkpoint identifiers are validated before path construction", () 
     /Invalid report checkpoint ID/iu,
   );
   assert.throws(
-    () => assertReportCheckpointIds([{ id: "po_valid" }, { id: "po_bad/name" }]),
+    () =>
+      assertReportCheckpointIds([{ id: "po_valid" }, { id: "po_bad/name" }]),
     /Invalid report checkpoint ID/iu,
   );
 });
