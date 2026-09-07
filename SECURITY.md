@@ -21,6 +21,9 @@ Until the first tagged stable release, only the current `main` branch receives s
 - Managed historical-review and default capsule directories use the same physical-directory boundary; explicitly supplied capsule `--out` paths remain an intentional user-controlled export surface.
 - Per-checkpoint visual artifact directories are validated separately so a nested `artifacts/<checkpoint-id>` symlink cannot redirect screenshot or diff writes.
 - PatchOath-managed files use exclusive randomized temporary files plus atomic replacement and reject pre-existing file symlinks or non-regular destinations before managed writes.
+- Managed JSON and Historical Effect Review reads reject file symlinks and require canonical containment within their managed directories.
+- Visual comparison and verification only read artifacts contained within the relevant checkpoint artifact directory; path escapes and artifact symlinks are rejected before file bytes are consumed.
+- `patchoath verify` reports invalid visual read boundaries as evidence verification failure rather than hashing an out-of-scope file.
 - Visual screenshots are captured to memory before managed-file persistence, so Playwright does not write directly through a pre-existing `before.png` or `after.png` symlink; generated visual diffs use the same managed-file writer.
 - Visual capture visits only an explicit `http://` or `https://` URL supplied by the user.
 - Snapshot capture uses a temporary Git index. It does not intentionally move `HEAD`, replace the real index, stash the worktree, or reset the current branch.

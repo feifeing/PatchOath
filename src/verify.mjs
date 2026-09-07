@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { checkpointRefCandidates } from "./core/brand.mjs";
+import { readManagedFile } from "./core/managed-file.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
-import { listCheckpoints } from "./core/store.mjs";
+import { ensurePhysicalDirectory } from "./core/store-boundary.mjs";
+import { listCheckpoints, storePaths } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 
 const HELP = `patchoath verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Receipt coverage is versioned; pre-v0.3 receipts and refs remain verifiable with their original scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
@@ -42,8 +43,11 @@ function resolve(checkpoints, token) {
   return matches[0];
 }
 
-async function sha256File(path) {
-  const bytes = await readFile(path);
+async function sha256ManagedFile(path, directory) {
+  const bytes = await readManagedFile(path, {
+    label: "Visual artifact",
+    within: directory,
+  });
   return createHash("sha256").update(bytes).digest("hex");
 }
 
@@ -99,15 +103,55 @@ function verifyGitEvidence(root, checkpoint) {
 }
 
 async function verifyVisualArtifacts(root, checkpoint) {
+  const captures = ["before", "after"]
+    .map((phase) => ({ phase, capture: checkpoint.visual?.[phase] }))
+    .filter(({ capture }) => capture?.image && capture?.imageSha256);
+  if (captures.length === 0) return [];
+
+  const paths = storePaths(root);
+  const artifactDirectory = join(paths.artifacts, checkpoint.id);
+  let artifactDirectoryValid = true;
+  let artifactDirectoryExists = true;
+  try {
+    const result = await ensurePhysicalDirectory(
+      paths.artifacts,
+      artifactDirectory,
+      "Checkpoint artifact directory",
+      { create: false },
+    );
+    artifactDirectoryExists = result.exists;
+  } catch {
+    artifactDirectoryValid = false;
+  }
+
   const checks = [];
-  for (const phase of ["before", "after"]) {
-    const capture = checkpoint.visual?.[phase];
-    if (!capture?.image || !capture?.imageSha256) continue;
+  for (const { phase, capture } of captures) {
+    if (!artifactDirectoryValid) {
+      checks.push({
+        phase,
+        path: capture.image,
+        expectedSha256: capture.imageSha256,
+        actualSha256: null,
+        status: "invalid",
+      });
+      continue;
+    }
+    if (!artifactDirectoryExists) {
+      checks.push({
+        phase,
+        path: capture.image,
+        expectedSha256: capture.imageSha256,
+        actualSha256: null,
+        status: "missing",
+      });
+      continue;
+    }
+
     const path = isAbsolute(capture.image)
       ? capture.image
       : join(root, capture.image);
     try {
-      const actualSha256 = await sha256File(path);
+      const actualSha256 = await sha256ManagedFile(path, artifactDirectory);
       checks.push({
         phase,
         path: capture.image,
@@ -116,13 +160,12 @@ async function verifyVisualArtifacts(root, checkpoint) {
         status: actualSha256 === capture.imageSha256 ? "verified" : "mismatch",
       });
     } catch (error) {
-      if (error.code !== "ENOENT") throw error;
       checks.push({
         phase,
         path: capture.image,
         expectedSha256: capture.imageSha256,
         actualSha256: null,
-        status: "missing",
+        status: error.code === "ENOENT" ? "missing" : "invalid",
       });
     }
   }
@@ -137,6 +180,8 @@ function verificationReason(receipt, gitEvidence, artifacts) {
     return "git-ref-missing";
   if (gitEvidence.some((item) => item.refStatus === "mismatch"))
     return "git-ref-mismatch";
+  if (artifacts.some((artifact) => artifact.status === "invalid"))
+    return "artifact-invalid";
   if (artifacts.some((artifact) => artifact.status === "missing"))
     return "artifact-missing";
   if (artifacts.some((artifact) => artifact.status === "mismatch"))

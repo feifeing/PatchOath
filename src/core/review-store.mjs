@@ -1,7 +1,7 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { LEGACY_REVIEW_RECORD_PREFIX, REVIEW_RECORD_PREFIX } from "./brand.mjs";
-import { writeManagedFileAtomic } from "./managed-file.mjs";
+import { readManagedFile, writeManagedFileAtomic } from "./managed-file.mjs";
 import { ensurePhysicalDirectory } from "./store-boundary.mjs";
 import {
   assertPrefixedStorageId,
@@ -57,9 +57,14 @@ export async function listHistoricalEffectReviews(root) {
   }
 
   const records = await Promise.all(
-    names.map(async (name) =>
-      JSON.parse(await readFile(join(directory, name), "utf8")),
-    ),
+    names.map(async (name) => {
+      const source = await readManagedFile(join(directory, name), {
+        encoding: "utf8",
+        label: "Historical review record",
+        within: directory,
+      });
+      return JSON.parse(source);
+    }),
   );
   return records.sort((left, right) =>
     String(right.recordedAt).localeCompare(String(left.recordedAt)),

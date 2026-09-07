@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import {
@@ -238,4 +238,87 @@ test("verification reads PatchOath visual files and rejects a replaced artifact"
     failed.artifacts.find((artifact) => artifact.phase === "after").status,
     "mismatch",
   );
+});
+
+test("verification classifies a visual path outside its checkpoint artifact directory as invalid", async () => {
+  const root = await createRepository();
+  const { config } = await initializeStore(root);
+  const checkpoint = checkpointFixture(
+    root,
+    config.currentSessionId,
+    "po_visual_path_escape",
+  );
+  const paths = storePaths(root);
+  const artifactDirectory = join(paths.artifacts, checkpoint.id);
+  await mkdir(artifactDirectory, { recursive: true });
+  const outsidePath = join(root, "outside.png");
+  const outsideBytes = Buffer.from("outside-image-evidence");
+  await writeFile(outsidePath, outsideBytes);
+
+  checkpoint.visual = {
+    before: {
+      image: "outside.png",
+      imageSha256: digest(outsideBytes),
+      dom: { hash: "outside-dom" },
+    },
+  };
+  checkpoint.receipt = createEvidenceReceipt(checkpoint);
+  await saveCheckpoint(root, checkpoint);
+
+  const output = memoryStream();
+  assert.equal(
+    await runVerify([checkpoint.id, "--json"], {
+      cwd: root,
+      stdout: output,
+      stderr: memoryStream(),
+    }),
+    2,
+  );
+  const result = JSON.parse(output.value());
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, "artifact-invalid");
+  assert.equal(result.artifacts[0].status, "invalid");
+});
+
+test("verification rejects a visual artifact symlink without hashing its target", async () => {
+  const root = await createRepository();
+  const { config } = await initializeStore(root);
+  const checkpoint = checkpointFixture(
+    root,
+    config.currentSessionId,
+    "po_visual_read_symlink",
+  );
+  const paths = storePaths(root);
+  const artifactDirectory = join(paths.artifacts, checkpoint.id);
+  await mkdir(artifactDirectory, { recursive: true });
+  const outsidePath = join(root, "outside-visual.png");
+  const outsideBytes = Buffer.from("outside-symlink-image");
+  await writeFile(outsidePath, outsideBytes);
+  const beforePath = join(artifactDirectory, "before.png");
+  await symlink(outsidePath, beforePath);
+
+  checkpoint.visual = {
+    before: {
+      image: `${paths.directoryName}/artifacts/${checkpoint.id}/before.png`,
+      imageSha256: digest(outsideBytes),
+      dom: { hash: "symlink-dom" },
+    },
+  };
+  checkpoint.receipt = createEvidenceReceipt(checkpoint);
+  await saveCheckpoint(root, checkpoint);
+
+  const output = memoryStream();
+  assert.equal(
+    await runVerify([checkpoint.id, "--json"], {
+      cwd: root,
+      stdout: output,
+      stderr: memoryStream(),
+    }),
+    2,
+  );
+  const result = JSON.parse(output.value());
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, "artifact-invalid");
+  assert.equal(result.artifacts[0].status, "invalid");
+  assert.equal(result.artifacts[0].actualSha256, null);
 });

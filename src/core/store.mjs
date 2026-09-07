@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import {
   CHECKPOINT_ID_PREFIX,
   LEGACY_CHECKPOINT_ID_PREFIX,
@@ -14,7 +14,7 @@ import {
   setRuntimeChangeContract,
 } from "./contract.mjs";
 import { createId } from "./id.mjs";
-import { writeManagedFileAtomic } from "./managed-file.mjs";
+import { readManagedFile, writeManagedFileAtomic } from "./managed-file.mjs";
 import { createEvidenceReceipt } from "./receipt.mjs";
 import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
 import {
@@ -96,7 +96,12 @@ export async function prepareDefaultCapsuleDirectory(root) {
 
 async function readJson(path, fallback = null) {
   try {
-    return JSON.parse(await readFile(path, "utf8"));
+    const source = await readManagedFile(path, {
+      encoding: "utf8",
+      label: "Managed JSON evidence file",
+      within: dirname(path),
+    });
+    return JSON.parse(source);
   } catch (error) {
     if (error.code === "ENOENT") return fallback;
     throw new Error(`Could not read ${path}: ${error.message}`);
