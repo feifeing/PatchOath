@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, relative, resolve as resolvePath, sep } from "node:path";
 import { checkpointRefCandidates } from "./core/brand.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
-import { listCheckpoints } from "./core/store.mjs";
+import { readFileSafe } from "./core/safe-file.mjs";
+import { inspectArtifactDirectory, listCheckpoints } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 
 const HELP = `patchoath verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Receipt coverage is versioned; pre-v0.3 receipts and refs remain verifiable with their original scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
@@ -43,7 +43,7 @@ function resolve(checkpoints, token) {
 }
 
 async function sha256File(path) {
-  const bytes = await readFile(path);
+  const bytes = await readFileSafe(path, undefined, "Visual artifact file");
   return createHash("sha256").update(bytes).digest("hex");
 }
 
@@ -98,14 +98,72 @@ function verifyGitEvidence(root, checkpoint) {
   return checks;
 }
 
+function managedArtifactPath(root, artifactDirectory, recordedPath) {
+  const candidate = isAbsolute(recordedPath)
+    ? resolvePath(recordedPath)
+    : resolvePath(root, recordedPath);
+  const rel = relative(artifactDirectory, candidate);
+  if (
+    !rel ||
+    rel === ".." ||
+    rel.startsWith(`..${sep}`) ||
+    isAbsolute(rel) ||
+    rel.includes(sep)
+  ) {
+    const error = new Error(
+      "Visual artifact path must be a direct file inside the checkpoint artifact directory.",
+    );
+    error.code = "PATCHOATH_INVALID_ARTIFACT_PATH";
+    throw error;
+  }
+  return candidate;
+}
+
+function artifactCheck(phase, capture, status, extra = {}) {
+  return {
+    phase,
+    path: capture.image,
+    expectedSha256: capture.imageSha256,
+    actualSha256: null,
+    status,
+    ...extra,
+  };
+}
+
 async function verifyVisualArtifacts(root, checkpoint) {
+  const captures = ["before", "after"]
+    .map((phase) => ({ phase, capture: checkpoint.visual?.[phase] }))
+    .filter(({ capture }) => capture?.image && capture?.imageSha256);
+  if (captures.length === 0) return [];
+
+  let inspected;
+  try {
+    inspected = await inspectArtifactDirectory(root, checkpoint.id);
+  } catch (error) {
+    return captures.map(({ phase, capture }) =>
+      artifactCheck(phase, capture, "invalid", {
+        detail: error.message,
+      }),
+    );
+  }
+  if (!inspected.exists) {
+    return captures.map(({ phase, capture }) =>
+      artifactCheck(phase, capture, "missing"),
+    );
+  }
+
   const checks = [];
-  for (const phase of ["before", "after"]) {
-    const capture = checkpoint.visual?.[phase];
-    if (!capture?.image || !capture?.imageSha256) continue;
-    const path = isAbsolute(capture.image)
-      ? capture.image
-      : join(root, capture.image);
+  for (const { phase, capture } of captures) {
+    let path;
+    try {
+      path = managedArtifactPath(root, inspected.directory, capture.image);
+    } catch (error) {
+      checks.push(
+        artifactCheck(phase, capture, "invalid", { detail: error.message }),
+      );
+      continue;
+    }
+
     try {
       const actualSha256 = await sha256File(path);
       checks.push({
@@ -116,14 +174,17 @@ async function verifyVisualArtifacts(root, checkpoint) {
         status: actualSha256 === capture.imageSha256 ? "verified" : "mismatch",
       });
     } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-      checks.push({
-        phase,
-        path: capture.image,
-        expectedSha256: capture.imageSha256,
-        actualSha256: null,
-        status: "missing",
-      });
+      if (error.code === "ENOENT") {
+        checks.push(artifactCheck(phase, capture, "missing"));
+        continue;
+      }
+      if (error.code === "PATCHOATH_UNSAFE_FILE") {
+        checks.push(
+          artifactCheck(phase, capture, "invalid", { detail: error.message }),
+        );
+        continue;
+      }
+      throw error;
     }
   }
   return checks;
@@ -137,6 +198,8 @@ function verificationReason(receipt, gitEvidence, artifacts) {
     return "git-ref-missing";
   if (gitEvidence.some((item) => item.refStatus === "mismatch"))
     return "git-ref-mismatch";
+  if (artifacts.some((artifact) => artifact.status === "invalid"))
+    return "artifact-invalid";
   if (artifacts.some((artifact) => artifact.status === "missing"))
     return "artifact-missing";
   if (artifacts.some((artifact) => artifact.status === "mismatch"))
