@@ -1,7 +1,7 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { LEGACY_REVIEW_RECORD_PREFIX, REVIEW_RECORD_PREFIX } from "./brand.mjs";
-import { writeFileAtomic } from "./safe-file.mjs";
+import { readFileSafe, writeFileAtomic } from "./safe-file.mjs";
 import { ensurePhysicalDirectory } from "./store-boundary.mjs";
 import {
   assertPrefixedStorageId,
@@ -58,7 +58,13 @@ export async function listHistoricalEffectReviews(root) {
 
   const records = await Promise.all(
     names.map(async (name) =>
-      JSON.parse(await readFile(join(directory, name), "utf8")),
+      JSON.parse(
+        await readFileSafe(
+          join(directory, name),
+          "utf8",
+          "Historical review evidence file",
+        ),
+      ),
     ),
   );
   return records.sort((left, right) =>
