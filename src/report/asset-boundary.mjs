@@ -49,7 +49,9 @@ export async function copyReportEvidenceAsset(
 
   const repositoryRoot = resolve(root);
   const artifactsRoot = resolve(storePaths(root).artifacts);
-  const sourcePath = isAbsolute(source) ? resolve(source) : resolve(root, source);
+  const sourcePath = isAbsolute(source)
+    ? resolve(source)
+    : resolve(root, source);
 
   if (!isWithin(artifactsRoot, sourcePath)) {
     return blocked(audit, "outside-artifacts-root");
@@ -65,7 +67,8 @@ export async function copyReportEvidenceAsset(
       realpath(sourcePath),
     ]);
   } catch (error) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR") return missing(audit);
+    if (error.code === "ENOENT" || error.code === "ENOTDIR")
+      return missing(audit);
     throw error;
   }
 
@@ -80,7 +83,8 @@ export async function copyReportEvidenceAsset(
   try {
     metadata = await stat(realSource);
   } catch (error) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR") return missing(audit);
+    if (error.code === "ENOENT" || error.code === "ENOTDIR")
+      return missing(audit);
     throw error;
   }
   if (!metadata.isFile()) return blocked(audit, "non-file-source");
