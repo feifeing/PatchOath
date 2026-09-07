@@ -1,12 +1,5 @@
 import { existsSync } from "node:fs";
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import {
   CHECKPOINT_ID_PREFIX,
@@ -16,13 +9,17 @@ import {
   REF_NAMESPACE,
   STORE_DIRECTORY_NAME,
 } from "./brand.mjs";
-import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
-import { createId } from "./id.mjs";
 import {
   runtimeChangeContract,
   setRuntimeChangeContract,
 } from "./contract.mjs";
+import { createId } from "./id.mjs";
 import { createEvidenceReceipt } from "./receipt.mjs";
+import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
+import {
+  ensureEvidenceStoreLayout,
+  ensurePhysicalDirectory,
+} from "./store-boundary.mjs";
 import {
   assertPrefixedStorageId,
   storageIdFromJsonFilename,
@@ -63,7 +60,37 @@ export function storePaths(root) {
     sessions: join(directory, "sessions"),
     artifacts: join(directory, "artifacts"),
     reports: join(directory, "reports"),
+    reviews: join(directory, "reviews"),
+    capsules: join(directory, "capsules"),
   };
+}
+
+export async function ensureStoreBoundary(root, { create = true } = {}) {
+  const paths = storePaths(root);
+  const boundary = await ensureEvidenceStoreLayout(root, paths, { create });
+  return { ...boundary, paths };
+}
+
+export async function prepareArtifactDirectory(root, checkpointId) {
+  assertCheckpointId(checkpointId);
+  const { paths } = await ensureStoreBoundary(root, { create: true });
+  const directory = join(paths.artifacts, checkpointId);
+  await ensurePhysicalDirectory(
+    paths.artifacts,
+    directory,
+    "Checkpoint artifact directory",
+  );
+  return directory;
+}
+
+export async function prepareDefaultCapsuleDirectory(root) {
+  const { paths } = await ensureStoreBoundary(root, { create: true });
+  await ensurePhysicalDirectory(
+    paths.directory,
+    paths.capsules,
+    "Capsule store directory",
+  );
+  return paths.capsules;
 }
 
 async function readJson(path, fallback = null) {
@@ -129,15 +156,7 @@ function normalizeNewCheckpointRefs(checkpoint) {
 
 export async function initializeStore(root) {
   const paths = storePaths(root);
-  await Promise.all(
-    [
-      paths.directory,
-      paths.checkpoints,
-      paths.sessions,
-      paths.artifacts,
-      paths.reports,
-    ].map((path) => mkdir(path, { recursive: true })),
-  );
+  await ensureEvidenceStoreLayout(root, paths, { create: true });
   await ensureLocalExclude(root);
 
   let config = await readJson(paths.config);
@@ -181,7 +200,8 @@ export async function loadStore(root) {
 }
 
 export async function saveState(root, state) {
-  await writeJsonAtomic(storePaths(root).state, state);
+  const { paths } = await ensureStoreBoundary(root, { create: true });
+  await writeJsonAtomic(paths.state, state);
 }
 
 export async function createSession(root, name = null) {
@@ -205,7 +225,8 @@ export async function createSession(root, name = null) {
 
 export async function loadSession(root, id) {
   assertSessionId(id);
-  const session = await readJson(join(storePaths(root).sessions, `${id}.json`));
+  const { paths } = await ensureStoreBoundary(root, { create: false });
+  const session = await readJson(join(paths.sessions, `${id}.json`));
   if (!session) throw new Error(`Session ${id} was not found.`);
   return session;
 }
@@ -232,8 +253,7 @@ export async function saveCheckpoint(root, checkpoint) {
   }
   assertValidCheckpoint(checkpoint);
   assertCheckpointId(checkpoint.id);
-  const paths = storePaths(root);
-  await mkdir(paths.checkpoints, { recursive: true });
+  const { paths } = await ensureStoreBoundary(root, { create: true });
   await writeJsonAtomic(
     join(paths.checkpoints, `${checkpoint.id}.json`),
     checkpoint,
@@ -242,9 +262,8 @@ export async function saveCheckpoint(root, checkpoint) {
 
 export async function loadCheckpoint(root, id) {
   assertCheckpointId(id);
-  const checkpoint = await readJson(
-    join(storePaths(root).checkpoints, `${id}.json`),
-  );
+  const { paths } = await ensureStoreBoundary(root, { create: false });
+  const checkpoint = await readJson(join(paths.checkpoints, `${id}.json`));
   if (!checkpoint) throw new Error(`Checkpoint ${id} was not found.`);
   const validated = assertValidCheckpoint(checkpoint);
   setRuntimeChangeContract(validated.authorization || null);
@@ -253,11 +272,12 @@ export async function loadCheckpoint(root, id) {
 
 export async function deleteCheckpoint(root, id) {
   assertCheckpointId(id);
-  await rm(join(storePaths(root).checkpoints, `${id}.json`), { force: true });
+  const { paths } = await ensureStoreBoundary(root, { create: false });
+  await rm(join(paths.checkpoints, `${id}.json`), { force: true });
 }
 
 export async function listCheckpoints(root) {
-  const paths = storePaths(root);
+  const { paths } = await ensureStoreBoundary(root, { create: false });
   let names = [];
   try {
     names = (await readdir(paths.checkpoints)).filter((name) =>
@@ -280,7 +300,7 @@ export async function listCheckpoints(root) {
 export async function appendCheckpointToSession(root, sessionId, checkpointId) {
   assertSessionId(sessionId);
   assertCheckpointId(checkpointId);
-  const paths = storePaths(root);
+  const { paths } = await ensureStoreBoundary(root, { create: true });
   const sessionPath = join(paths.sessions, `${sessionId}.json`);
   const session = (await readJson(sessionPath)) || {
     schemaVersion: 1,
@@ -301,7 +321,7 @@ export async function removeCheckpointFromSession(
 ) {
   assertSessionId(sessionId);
   assertCheckpointId(checkpointId);
-  const paths = storePaths(root);
+  const { paths } = await ensureStoreBoundary(root, { create: false });
   const sessionPath = join(paths.sessions, `${sessionId}.json`);
   const session = await readJson(sessionPath);
   if (!session) return;

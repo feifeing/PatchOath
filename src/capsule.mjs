@@ -6,7 +6,10 @@ import {
   verifyDisclosureCapsule,
 } from "./core/disclosure.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
-import { listCheckpoints, storePaths } from "./core/store.mjs";
+import {
+  listCheckpoints,
+  prepareDefaultCapsuleDirectory,
+} from "./core/store.mjs";
 import { findRepositoryRoot } from "./git/git.mjs";
 
 const HELP = `patchoath capsule [checkpoint] [options]
@@ -181,7 +184,9 @@ export async function runCapsule(
       includeContract: options.includeContract,
     });
     const capsule = createDisclosureCapsule(checkpoint, policy);
-    const defaultDirectory = join(storePaths(root).directory, "capsules");
+    const defaultDirectory = options.out
+      ? null
+      : await prepareDefaultCapsuleDirectory(root);
     const outputPath = options.out
       ? isAbsolute(options.out)
         ? options.out
