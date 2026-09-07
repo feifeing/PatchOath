@@ -87,7 +87,10 @@ test("a symlinked checkpoint store cannot redirect checkpoint persistence", asyn
 
 test("checkpoint artifact subdirectories cannot be symlinked outside the evidence store", async (context) => {
   const root = await repository(context);
-  const outside = await outsideDirectory(context, "patchoath-artifact-checkpoint-");
+  const outside = await outsideDirectory(
+    context,
+    "patchoath-artifact-checkpoint-",
+  );
   await initializeStore(root);
   const paths = storePaths(root);
   const checkpointId = "po_artifact_symlink";
@@ -139,7 +142,10 @@ test("physical legacy evidence stores remain supported", async (context) => {
 
   assert.equal(initialized.legacyStore, true);
   assert.equal(initialized.paths.directory, legacy);
-  assert.equal((await ensureStoreBoundary(root, { create: false })).exists, true);
+  assert.equal(
+    (await ensureStoreBoundary(root, { create: false })).exists,
+    true,
+  );
   assert.equal(
     JSON.parse(await readFile(initialized.paths.config, "utf8")).schemaVersion,
     2,
@@ -159,5 +165,8 @@ test("managed store boundary rejects a symlinked report directory even for non-r
     /Report store directory must not be a symbolic link/iu,
   );
   await writeFile(join(outside, "sentinel.txt"), "untouched", "utf8");
-  assert.equal(await readFile(join(outside, "sentinel.txt"), "utf8"), "untouched");
+  assert.equal(
+    await readFile(join(outside, "sentinel.txt"), "utf8"),
+    "untouched",
+  );
 });
