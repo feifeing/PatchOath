@@ -72,7 +72,9 @@ export async function ensureEvidenceStoreLayout(
     ["artifacts", "Artifact store directory"],
     ["reports", "Report store directory"],
   ]) {
-    await ensurePhysicalDirectory(paths.directory, paths[key], label, { create });
+    await ensurePhysicalDirectory(paths.directory, paths[key], label, {
+      create,
+    });
   }
   return { exists: true, paths };
 }
