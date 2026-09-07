@@ -13,12 +13,20 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { writeManagedFileAtomic } from "../src/core/managed-file.mjs";
-import { saveHistoricalEffectReview } from "../src/core/review-store.mjs";
+import {
+  readManagedFile,
+  writeManagedFileAtomic,
+} from "../src/core/managed-file.mjs";
+import {
+  listHistoricalEffectReviews,
+  saveHistoricalEffectReview,
+} from "../src/core/review-store.mjs";
 import { CONFIG_SCHEMA_VERSION } from "../src/core/schema.mjs";
 import {
   ensureStoreBoundary,
   initializeStore,
+  listCheckpoints,
+  loadCheckpoint,
   prepareArtifactDirectory,
   prepareDefaultCapsuleDirectory,
   saveCheckpoint,
@@ -248,4 +256,67 @@ test("historical review persistence rejects a pre-existing record file symlink",
     /Historical review record must not be a symbolic link/iu,
   );
   assert.equal(await readFile(target, "utf8"), "keep-me");
+});
+
+test("managed reads reject symlink files without reading their targets", async (context) => {
+  const directory = await outsideDirectory(context, "patchoath-managed-read-");
+  const target = await outsideFile(context, "patchoath-managed-read-target-");
+  const source = join(directory, "evidence.json");
+  await symlink(target, source);
+
+  await assert.rejects(
+    readManagedFile(source, {
+      encoding: "utf8",
+      label: "Test managed read",
+      within: directory,
+    }),
+    /Test managed read must not be a symbolic link/iu,
+  );
+  assert.equal(await readFile(target, "utf8"), "keep-me");
+});
+
+test("checkpoint load and listing reject a stored checkpoint file replaced by a symlink", async (context) => {
+  const root = await repository(context);
+  await initializeStore(root);
+  const checkpoint = checkpointFixture(root, "po_checkpoint_read_symlink");
+  await saveCheckpoint(root, checkpoint);
+  const destination = join(
+    storePaths(root).checkpoints,
+    `${checkpoint.id}.json`,
+  );
+  const outside = await outsideDirectory(context, "patchoath-checkpoint-read-");
+  const target = join(outside, "checkpoint.json");
+  await writeFile(target, await readFile(destination));
+  await rm(destination);
+  await symlink(target, destination);
+
+  await assert.rejects(
+    loadCheckpoint(root, checkpoint.id),
+    /Managed JSON evidence file must not be a symbolic link/iu,
+  );
+  await assert.rejects(
+    listCheckpoints(root),
+    /Managed JSON evidence file must not be a symbolic link/iu,
+  );
+});
+
+test("historical review listing rejects a stored record file replaced by a symlink", async (context) => {
+  const root = await repository(context);
+  const initialized = await initializeStore(root);
+  const recordId = "por_review_read_symlink";
+  await saveHistoricalEffectReview(root, {
+    recordId,
+    recordedAt: "2026-09-08T00:00:00.000Z",
+  });
+  const destination = join(initialized.paths.reviews, `${recordId}.json`);
+  const outside = await outsideDirectory(context, "patchoath-review-read-");
+  const target = join(outside, "review.json");
+  await writeFile(target, await readFile(destination));
+  await rm(destination);
+  await symlink(target, destination);
+
+  await assert.rejects(
+    listHistoricalEffectReviews(root),
+    /Historical review record must not be a symbolic link/iu,
+  );
 });
