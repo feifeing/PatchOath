@@ -4,6 +4,14 @@ All notable user-facing changes to PatchOath are recorded here.
 
 The project is still alpha. Entries describe implemented behavior; they are not promises of semantic correctness, security, legal compliance, or future API stability.
 
+## Unreleased
+
+### Repository identity
+
+- Migrated the GitHub repository slug from the retired working identity to `feifeing/PatchOath`.
+- Updated repository-facing package metadata, CI badge links, clone/setup instructions, vulnerability-reporting links, and release-readiness records to use the PatchOath repository identity.
+- Added release-gate checks so the retired repository slug cannot silently return to current package metadata or public setup/security documentation.
+
 ## 0.3.0 — 2026-09
 
 ### Product identity
@@ -58,7 +66,7 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 
 ### Known release blockers outside the code tree
 
-- The GitHub repository slug and description still use the retired platform identity until repository Settings are updated.
+- The GitHub repository description still uses the retired positioning and must be updated in repository Settings before a coordinated public release.
 - `main` still requires GitHub branch-protection/ruleset enforcement so passing CI cannot be bypassed casually.
 - Patent/contributor-license governance remains an explicit pre-scale decision; the repository currently remains MIT licensed.
 

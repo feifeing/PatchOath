@@ -1,6 +1,7 @@
 # PatchOath brand-clearance record
 
-Recorded: **2026-09-04**
+Recorded: **2026-09-04**  
+Repository slug cutover recorded: **2026-09-08**
 
 This document records the public naming screen used for the v0.3 project rename. It is an engineering/provenance record, not a legal opinion, trademark registration, or guarantee that no conflicting rights exist.
 
@@ -33,7 +34,7 @@ Before adopting the name, targeted exact-name searches were performed across pub
 - public domain-use searches; and
 - publicly indexed exact-name results associated with USPTO, WIPO, and EUIPO trademark sources.
 
-At the time recorded above, those searches did **not identify an exact `PatchOath` software product, package, company, or clearly matching public trademark result**. GitHub repository-name search also returned no exact-name repository. GitHub code search results resembling the term were substring matches such as Android `PatchOatHeader` / `patchoat`, not an exact `PatchOath` product or identifier.
+At the time recorded above, those searches did **not identify an exact `PatchOath` software product, package, company, or clearly matching public trademark result**. GitHub repository-name search also returned no exact-name repository before this project's repository was renamed. GitHub code search results resembling the term were substring matches such as Android `PatchOatHeader` / `patchoat`, not an exact `PatchOath` product or identifier.
 
 This is meaningful collision-reduction evidence, but it is not a substitute for a professional jurisdiction/class-specific trademark clearance search before significant commercialization.
 
@@ -86,8 +87,12 @@ Legacy `vt_`, `vtr_`, `vtcd_`, `vtd_`, and `vrr_` evidence remains a compatibili
 
 The legacy `vibetrace` CLI name is retained only as a deprecated migration shim during the v0.3 compatibility window. New documentation and examples use `patchoath`.
 
+## Repository identity cutover
+
+The GitHub repository now uses the public slug `feifeing/PatchOath`. Repository-controlled clone links, package repository metadata, CI badge links, issue links, and vulnerability-reporting links should use that slug. Historical VibeTrace identifiers remain only for compatibility with evidence created before the rename; they are not current repository identity.
+
 ## Release boundary
 
-The package remains private during the migration and final technical audit. Making the npm package public, registering a trademark, purchasing domains, or relying on the name for significant commercial investment should remain explicit decisions rather than side effects of a code rename.
+The package remains private during the final technical audit. Making the npm package public, registering a trademark, purchasing domains, or relying on the name for significant commercial investment should remain explicit decisions rather than side effects of a code or repository rename.
 
 For commercial release, a qualified professional should perform a jurisdiction- and class-specific trademark clearance appropriate to the intended markets; patent/freedom-to-operate analysis is a separate question when commercially material. No statement in this repository should be read as a guarantee of non-infringement.
