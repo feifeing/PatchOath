@@ -78,7 +78,9 @@ test("state schema rejects path-like active checkpoint identifiers", () => {
     activeCheckpointId: "../po_outside",
   });
   assert.equal(result.valid, false);
-  assert.ok(result.issues.some((issue) => issue.includes("activeCheckpointId")));
+  assert.ok(
+    result.issues.some((issue) => issue.includes("activeCheckpointId")),
+  );
 });
 
 test("session schema rejects unsafe and duplicate checkpoint references", () => {
@@ -89,6 +91,8 @@ test("session schema rejects unsafe and duplicate checkpoint references", () => 
     checkpoints: ["po_good", "../po_bad", "po_good"],
   });
   assert.equal(result.valid, false);
-  assert.ok(result.issues.some((issue) => issue.includes("checkpoints may contain")));
+  assert.ok(
+    result.issues.some((issue) => issue.includes("checkpoints may contain")),
+  );
   assert.ok(result.issues.some((issue) => issue.includes("duplicate")));
 });
