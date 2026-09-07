@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { writeManagedFileAtomic } from "../core/managed-file.mjs";
 
 async function loadPlaywright() {
   try {
@@ -33,7 +32,6 @@ export async function capturePage({
 }) {
   const { chromium } = await loadPlaywright();
   const normalizedUrl = validateUrl(url);
-  await mkdir(dirname(outputPath), { recursive: true });
   const browser = await chromium.launch({ headless: true });
 
   try {
@@ -100,14 +98,15 @@ export async function capturePage({
     });
 
     const html = await page.content();
-    await page.screenshot({
-      path: outputPath,
+    const imageBytes = await page.screenshot({
+      type: "png",
       fullPage: true,
       animations: "disabled",
     });
-    const imageSha256 = createHash("sha256")
-      .update(await readFile(outputPath))
-      .digest("hex");
+    await writeManagedFileAtomic(outputPath, imageBytes, {
+      label: "Visual capture artifact",
+    });
+    const imageSha256 = createHash("sha256").update(imageBytes).digest("hex");
 
     return {
       url: page.url(),
