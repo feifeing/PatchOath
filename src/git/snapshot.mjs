@@ -20,8 +20,7 @@ function assertHeadStable(root, expectedHead) {
   const actualHead = runGit(root, ["rev-parse", "--verify", "HEAD"]).trim();
   if (actualHead === expectedHead) return;
   throw new GitError(
-    "Repository HEAD changed while PatchOath was capturing a Git snapshot.",
-    `expected ${expectedHead.slice(0, 12)}; current ${actualHead.slice(0, 12)}. Retry after repository history is stable.`,
+    `Repository HEAD changed while PatchOath was capturing a Git snapshot. Expected ${expectedHead.slice(0, 12)}; current ${actualHead.slice(0, 12)}. Retry after repository history is stable.`,
   );
 }
 
