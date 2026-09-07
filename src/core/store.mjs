@@ -88,7 +88,10 @@ export async function inspectArtifactDirectory(root, checkpointId) {
   assertCheckpointId(checkpointId);
   const boundary = await ensureStoreBoundary(root, { create: false });
   if (!boundary.exists) {
-    return { exists: false, directory: join(boundary.paths.artifacts, checkpointId) };
+    return {
+      exists: false,
+      directory: join(boundary.paths.artifacts, checkpointId),
+    };
   }
   const directory = join(boundary.paths.artifacts, checkpointId);
   const result = await ensurePhysicalDirectory(
@@ -326,11 +329,7 @@ export async function listCheckpoints(root) {
   }
   const checkpoints = await Promise.all(
     names.map((name) =>
-      readJson(
-        join(paths.checkpoints, name),
-        null,
-        "Checkpoint evidence file",
-      ),
+      readJson(join(paths.checkpoints, name), null, "Checkpoint evidence file"),
     ),
   );
   return checkpoints
@@ -346,13 +345,16 @@ export async function appendCheckpointToSession(root, sessionId, checkpointId) {
   assertCheckpointId(checkpointId);
   const { paths } = await ensureStoreBoundary(root, { create: true });
   const sessionPath = join(paths.sessions, `${sessionId}.json`);
-  const session =
-    (await readJson(sessionPath, null, "Session evidence file")) || {
-      schemaVersion: 1,
-      id: sessionId,
-      createdAt: new Date().toISOString(),
-      checkpoints: [],
-    };
+  const session = (await readJson(
+    sessionPath,
+    null,
+    "Session evidence file",
+  )) || {
+    schemaVersion: 1,
+    id: sessionId,
+    createdAt: new Date().toISOString(),
+    checkpoints: [],
+  };
   if (!session.checkpoints.includes(checkpointId))
     session.checkpoints.push(checkpointId);
   session.updatedAt = new Date().toISOString();
