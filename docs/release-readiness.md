@@ -55,6 +55,7 @@ This checklist is intentionally conservative. Passing engineering CI does not by
 - [x] PatchOath-managed repository-local evidence directories reject symlink redirection, including nested per-checkpoint artifact directories.
 - [x] Managed JSON/review/default-capsule/visual outputs reject file symlink destinations and use randomized exclusive temporary writes before atomic replacement.
 - [x] Managed JSON/review reads reject file symlinks, and visual comparison/verification refuses paths outside the relevant checkpoint artifact directory.
+- [x] Guarded restore verifies the source Evidence Receipt and before/after snapshot-ref linkage before READY/apply, while retaining current-worktree and late-drift guards plus HEAD/index postconditions.
 - [ ] Any future telemetry, cloud sync, accounts, payments, hosted reports, or retention policy is reviewed before implementation claims or launch.
 - [x] Security guidance explicitly warns against publishing private repository contents, credentials, prompts, source paths, screenshots, or other sensitive evidence in public issues.
 
