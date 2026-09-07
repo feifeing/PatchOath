@@ -184,7 +184,9 @@ if (retiredProductPattern.test(readmeOutsideLegacy)) {
   );
 }
 if (retiredCommandPattern.test(readmeOutsideLegacy)) {
-  fail("README contains a retired vibetrace CLI example outside Legacy compatibility.");
+  fail(
+    "README contains a retired vibetrace CLI example outside Legacy compatibility.",
+  );
 }
 
 const changelog = await readText("CHANGELOG.md");
@@ -214,7 +216,9 @@ if (/\bvibetrace\s+/u.test(html)) {
 for (const name of jsFiles) {
   const text = await readFile(join(webDirectory, name), "utf8");
   if (/\bVibeTrace\b/u.test(text)) {
-    fail(`${name} contains the retired VibeTrace product name in dashboard code.`);
+    fail(
+      `${name} contains the retired VibeTrace product name in dashboard code.`,
+    );
   }
   if (
     /['"`]vibetrace\s+(?:init|checkpoint|diff|attest|verify|restore|capsule|contract-delta|review|replay|session|report)\b/u.test(
