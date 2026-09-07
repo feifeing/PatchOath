@@ -9,7 +9,10 @@ import {
   REF_NAMESPACE,
   STORE_DIRECTORY_NAME,
 } from "./brand.mjs";
-import { runtimeChangeContract, setRuntimeChangeContract } from "./contract.mjs";
+import {
+  runtimeChangeContract,
+  setRuntimeChangeContract,
+} from "./contract.mjs";
 import { createId } from "./id.mjs";
 import { createEvidenceReceipt } from "./receipt.mjs";
 import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
