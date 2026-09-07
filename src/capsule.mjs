@@ -5,6 +5,7 @@ import {
   createDisclosurePolicy,
   verifyDisclosureCapsule,
 } from "./core/disclosure.mjs";
+import { writeManagedFileAtomic } from "./core/managed-file.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import {
   listCheckpoints,
@@ -192,10 +193,18 @@ export async function runCapsule(
         ? options.out
         : join(root, options.out)
       : join(defaultDirectory, `${checkpoint.id}.capsule.json`);
+    const bytes = `${JSON.stringify(capsule, null, 2)}\n`;
 
-    await writeCapsule(outputPath, `${JSON.stringify(capsule, null, 2)}\n`, {
-      refuseOverwrite: Boolean(options.out && !options.force),
-    });
+    if (options.out) {
+      await writeCapsule(outputPath, bytes, {
+        refuseOverwrite: !options.force,
+      });
+    } else {
+      await writeManagedFileAtomic(outputPath, bytes, {
+        encoding: "utf8",
+        label: "Default Evidence Capsule",
+      });
+    }
 
     const result = {
       path: outputPath,
