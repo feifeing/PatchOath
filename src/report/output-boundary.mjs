@@ -89,14 +89,18 @@ export async function prepareReportOutput(root, checkpointId) {
   const reportsReal = await realpath(reportsDirectory);
   const reportReal = await realpath(reportDirectory);
   if (!isWithin(reportsReal, reportReal)) {
-    throw new Error("Checkpoint report directory resolved outside the report root.");
+    throw new Error(
+      "Checkpoint report directory resolved outside the report root.",
+    );
   }
 
   const assetDirectory = join(reportDirectory, "assets");
   await mkdir(assetDirectory);
   const assetsReal = await realpath(assetDirectory);
   if (!isWithin(reportReal, assetsReal)) {
-    throw new Error("Report asset directory resolved outside the checkpoint report.");
+    throw new Error(
+      "Report asset directory resolved outside the checkpoint report.",
+    );
   }
 
   return { reportDirectory, assetDirectory };
