@@ -7,8 +7,9 @@ This checklist is intentionally conservative. Passing engineering CI does not by
 - [x] **Legacy VibeTrace brand retired from new product/package/CLI surfaces.** Earlier exact and near-exact software uses made the old name unsuitable for continued investment.
 - [x] **PatchOath engineering collision scan completed.** Exact-name searches across public developer/software/package contexts did not surface a material same-name conflict during the v0.3 migration review. See [`brand-clearance.md`](brand-clearance.md).
 - [ ] **Formal commercial trademark clearance completed for target jurisdictions/classes.** Public searches reduce obvious collision risk but are not a legal opinion or registration clearance.
-- [x] npm package remains `private: true` during the v0.3 migration, final CI, repository-slug migration, and explicit public-release decision.
-- [ ] Repository slug, package-publication plan, release notes, and external links are migrated as one coordinated release action.
+- [x] npm package remains `private: true` during the v0.3 migration, final CI, and explicit public-release decision.
+- [x] GitHub repository slug is migrated to `feifeing/PatchOath`.
+- [ ] Package-publication plan, release notes, repository description, and external launch links are migrated as one coordinated release action.
 
 ## Rights and provenance
 
@@ -51,6 +52,8 @@ This checklist is intentionally conservative. Passing engineering CI does not by
 - [x] Minimum-disclosure Capsule defaults are covered by tests and remain narrower than the full local report.
 - [x] Historical Effect Review is regression-tested as retrospective only and cannot mutate the source Change Contract or grant future execution authority.
 - [x] Dashboard review surfaces remain read-only for historical review records and distinguish full local evidence from a share-oriented Capsule.
+- [x] PatchOath-managed repository-local evidence directories reject symlink redirection, including nested per-checkpoint artifact directories.
+- [x] Managed JSON/review/default-capsule/visual outputs reject file symlink destinations and use randomized exclusive temporary writes before atomic replacement.
 - [ ] Any future telemetry, cloud sync, accounts, payments, hosted reports, or retention policy is reviewed before implementation claims or launch.
 - [x] Security guidance explicitly warns against publishing private repository contents, credentials, prompts, source paths, screenshots, or other sensitive evidence in public issues.
 
@@ -69,7 +72,8 @@ A green baseline is evidence for the tested invariants only; it is not a securit
 
 ## Platform governance
 
-- [ ] GitHub repository slug and description are migrated from the retired working identity to PatchOath.
+- [x] GitHub repository slug is migrated from the retired working identity to `PatchOath`.
+- [ ] GitHub repository description is refreshed from the earlier “time travel for vibe coding” positioning before launch copy is frozen.
 - [ ] `main` requires pull requests and successful CI/status checks before merge.
 - [ ] Required checks include both Node versions, browser E2E, Ubuntu/Windows package smoke, formatting, and `rights:check` through their current workflow jobs.
 - [ ] Administrative bypass policy is reviewed deliberately rather than assumed safe because CI exists.
