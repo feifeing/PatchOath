@@ -18,6 +18,12 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 - Capture Playwright screenshots to memory before managed persistence so the browser never writes directly through a fixed `before.png` or `after.png` path.
 - Preserve physical legacy `.vibetrace/` stores for migration compatibility.
 
+### Git and restore safety
+
+- Require the restore source Evidence Receipt to verify before PatchOath will produce a READY restore plan or apply it.
+- Require the recorded before/after Git commit objects to exist and trusted PatchOath/legacy snapshot refs to still resolve to those commits before restore proceeds.
+- Keep the existing current-worktree and late-drift guards plus post-restore HEAD/index invariants; source-integrity failure occurs before worktree mutation.
+
 ### Repository identity
 
 - Renamed the GitHub repository slug from the retired `vibetrace` working identity to `PatchOath`.
