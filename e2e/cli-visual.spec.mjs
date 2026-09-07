@@ -1,6 +1,13 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
@@ -41,6 +48,9 @@ async function waitForServer(url) {
 
 test("PatchOath captures and compares a real before/after page", async () => {
   const root = await mkdtemp(join(tmpdir(), "patchoath-e2e-"));
+  const protectedRoot = await mkdtemp(join(tmpdir(), "patchoath-e2e-protected-"));
+  const protectedTarget = join(protectedRoot, "sentinel.txt");
+  await writeFile(protectedTarget, "keep-me", "utf8");
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
   const serverSource = `import {createServer} from 'node:http';import {readFile} from 'node:fs/promises';createServer(async(_q,r)=>{r.setHeader('content-type','text/html');r.end(await readFile(new URL('./index.html',import.meta.url)))}).listen(${port},'127.0.0.1');`;
@@ -96,8 +106,48 @@ test("PatchOath captures and compares a real before/after page", async () => {
     expect(checkpoint.analysis.visual.layout.supported).toBe(true);
     expect(checkpoint.analysis.visual.semantic.supported).toBe(false);
     expect(checkpoint.visual.before.image).not.toMatch(/^\//u);
+
+    run(root, [
+      "checkpoint",
+      "--prompt",
+      "Change the page color again",
+      "--url",
+      url,
+      "--viewport",
+      "800x600",
+      "--wait",
+      "0",
+    ]);
+    const state = JSON.parse(
+      await readFile(join(root, ".patchoath", "state.json"), "utf8"),
+    );
+    const artifactDirectory = join(
+      root,
+      ".patchoath",
+      "artifacts",
+      state.activeCheckpointId,
+    );
+    await symlink(protectedTarget, join(artifactDirectory, "after.png"));
+    await writeFile(
+      join(root, "index.html"),
+      '<main style="width:100vw;height:100vh;background:#ff884d"></main>',
+      "utf8",
+    );
+
+    let failure = null;
+    try {
+      run(root, ["checkpoint", "--finish"]);
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).not.toBeNull();
+    expect(String(failure.stderr)).toContain(
+      "Visual capture artifact must not be a symbolic link",
+    );
+    expect(await readFile(protectedTarget, "utf8")).toBe("keep-me");
   } finally {
     server.kill("SIGTERM");
     await rm(root, { recursive: true, force: true });
+    await rm(protectedRoot, { recursive: true, force: true });
   }
 });
