@@ -17,6 +17,9 @@ Until the first tagged stable release, only the current `main` branch receives s
 - PatchOath invokes Git with argument arrays rather than interpolated shell command strings.
 - New local evidence is written beneath `.patchoath/`, which may contain prompts, paths, screenshots, DOM fingerprints, review records, and reports. Treat it as potentially sensitive.
 - Legacy `.vibetrace/` evidence may still be read for migration compatibility; PatchOath does not require rewriting it to validate old records.
+- PatchOath-managed evidence-store roots and core checkpoint/session/artifact/report directories must resolve to physical directories inside the repository rather than symlinks.
+- Managed historical-review and default capsule directories use the same physical-directory boundary; explicitly supplied capsule `--out` paths remain an intentional user-controlled export surface.
+- Per-checkpoint visual artifact directories are validated separately so a nested `artifacts/<checkpoint-id>` symlink cannot redirect screenshot or diff writes.
 - Visual capture visits only an explicit `http://` or `https://` URL supplied by the user.
 - Snapshot capture uses a temporary Git index. It does not intentionally move `HEAD`, replace the real index, stash the worktree, or reset the current branch.
 - `patchoath restore` is a dry run unless `--apply` is supplied explicitly.
