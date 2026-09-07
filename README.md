@@ -283,7 +283,7 @@ cd /path/to/your/project
 patchoath init
 ```
 
-The repository, product, package, and primary CLI now share the PatchOath identity. Historical VibeTrace names remain only where backward evidence verification or the temporary compatibility shim requires them.
+The repository, product, package, and primary CLI now share the PatchOath identity. Pre-PatchOath names remain only where backward evidence verification or the temporary compatibility shim requires them.
 
 ## Legacy compatibility
 
