@@ -64,9 +64,7 @@ async function maybeWarnIgnoredCoverage(topLevel, io) {
   if (!["checkpoint", "diff", "attest"].includes(command)) return;
   if (
     topLevel.some((token) =>
-      ["--json", "--abort", "--help", "-h", "--version", "-v"].includes(
-        token,
-      ),
+      ["--json", "--abort", "--help", "-h", "--version", "-v"].includes(token),
     )
   ) {
     return;
