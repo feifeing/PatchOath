@@ -102,7 +102,8 @@ export function analyzeChangeSet({
   contract = null,
   evidenceCoverage = null,
 }) {
-  const resolvedEvidenceCoverage = evidenceCoverage || files?.evidenceCoverage || null;
+  const resolvedEvidenceCoverage =
+    evidenceCoverage || files?.evidenceCoverage || null;
   const intent = inferPromptIntent(prompt);
   const enrichedFiles = enrichFiles(files);
   const modules = new Set(enrichedFiles.map((file) => file.module));
