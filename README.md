@@ -341,6 +341,7 @@ The repository includes an automated `rights:check` gate covering the reviewed d
 
 See:
 
+- [`CHANGELOG.md`](CHANGELOG.md)
 - [`LEGAL.md`](LEGAL.md)
 - [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 - [`docs/brand-clearance.md`](docs/brand-clearance.md)
