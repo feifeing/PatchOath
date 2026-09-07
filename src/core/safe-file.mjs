@@ -55,11 +55,7 @@ async function createExclusiveSibling(path) {
 export async function writeFileAtomic(
   path,
   data,
-  {
-    encoding = undefined,
-    label = "Output file",
-    refuseOverwrite = false,
-  } = {},
+  { encoding = undefined, label = "Output file", refuseOverwrite = false } = {},
 ) {
   if (refuseOverwrite) {
     await mkdir(dirname(path), { recursive: true });
