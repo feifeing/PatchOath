@@ -8,7 +8,7 @@
 <p align="center">Declare what an AI coding change may touch. Capture what it actually touched. Review the difference with evidence instead of guesswork.</p>
 
 <p align="center">
-  <a href="https://github.com/feifeing/vibetrace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/feifeing/vibetrace/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/feifeing/PatchOath/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/feifeing/PatchOath/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-c8ff66.svg" /></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-%3E%3D20-9a7cff.svg" />
   <img alt="local first" src="https://img.shields.io/badge/evidence-local--first-11151a.svg" />
@@ -274,8 +274,8 @@ PatchOath remains intentionally `private: true` while the v0.3 migration and rel
 For local development:
 
 ```bash
-git clone https://github.com/feifeing/vibetrace.git
-cd vibetrace
+git clone https://github.com/feifeing/PatchOath.git
+cd PatchOath
 npm install
 npm link
 
@@ -283,7 +283,7 @@ cd /path/to/your/project
 patchoath init
 ```
 
-The current GitHub repository slug is retained during the migration; product, package, CLI, state, and evidence namespaces are moving to PatchOath first so existing links do not break mid-change.
+The repository, product, package, and primary CLI now share the PatchOath identity. Historical VibeTrace names remain only where backward evidence verification or the temporary compatibility shim requires them.
 
 ## Legacy compatibility
 
