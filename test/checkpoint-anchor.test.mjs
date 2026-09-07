@@ -43,7 +43,10 @@ test("checkpoint finish blocks HEAD drift and remains recoverable at the origina
 
   const blocked = invoke(root, ["checkpoint", "--finish"]);
   assert.equal(blocked.code, 1);
-  assert.match(blocked.stderr, /Repository HEAD changed since the checkpoint started/iu);
+  assert.match(
+    blocked.stderr,
+    /Repository HEAD changed since the checkpoint started/iu,
+  );
   assert.match(blocked.stdout, /Return to the original repository anchor/iu);
 
   const { state } = await loadStore(root);
@@ -68,7 +71,10 @@ test("checkpoint finish blocks HEAD drift and remains recoverable at the origina
 test("live diff blocks a branch switch even when HEAD still points to the same commit", async (context) => {
   const root = await createRepository();
   context.after(() => rm(root, { recursive: true, force: true }));
-  const checkpointId = await startCheckpoint(root, "Edit app.js without changing branches");
+  const checkpointId = await startCheckpoint(
+    root,
+    "Edit app.js without changing branches",
+  );
   const originalHead = git(root, ["rev-parse", "HEAD"]);
 
   git(root, ["switch", "-c", "alternate"]);
@@ -78,7 +84,10 @@ test("live diff blocks a branch switch even when HEAD still points to the same c
   const blocked = invoke(root, ["diff", "--json"]);
   assert.equal(blocked.code, 1);
   assert.equal(blocked.stdout, "");
-  assert.match(blocked.stderr, /Repository branch changed since the checkpoint started/iu);
+  assert.match(
+    blocked.stderr,
+    /Repository branch changed since the checkpoint started/iu,
+  );
 
   git(root, ["switch", "main"]);
   const finished = invoke(root, ["checkpoint", "--finish"]);
