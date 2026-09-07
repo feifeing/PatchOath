@@ -1,4 +1,5 @@
 import { readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { LEGACY_REVIEW_RECORD_PREFIX, REVIEW_RECORD_PREFIX } from "./brand.mjs";
 import { ensurePhysicalDirectory } from "./store-boundary.mjs";
 import {
@@ -15,7 +16,8 @@ export function historicalReviewDirectory(root) {
 
 async function prepareHistoricalReviewDirectory(root, create) {
   const boundary = await ensureStoreBoundary(root, { create });
-  if (!boundary.exists) return { exists: false, directory: boundary.paths.reviews };
+  if (!boundary.exists)
+    return { exists: false, directory: boundary.paths.reviews };
   const result = await ensurePhysicalDirectory(
     boundary.paths.directory,
     boundary.paths.reviews,
@@ -32,7 +34,7 @@ export async function saveHistoricalEffectReview(root, record) {
     "review record ID",
   );
   const { directory } = await prepareHistoricalReviewDirectory(root, true);
-  const path = `${directory}/${record.recordId}.json`;
+  const path = join(directory, `${record.recordId}.json`);
   const temporary = `${path}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf8");
   await rename(temporary, path);
@@ -54,7 +56,7 @@ export async function listHistoricalEffectReviews(root) {
 
   const records = await Promise.all(
     names.map(async (name) =>
-      JSON.parse(await readFile(`${directory}/${name}`, "utf8")),
+      JSON.parse(await readFile(join(directory, name), "utf8")),
     ),
   );
   return records.sort((left, right) =>
