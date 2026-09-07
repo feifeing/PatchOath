@@ -217,7 +217,9 @@ export async function initializeStore(root) {
       visual: { viewport: { width: 1440, height: 900 }, waitMs: 350 },
     });
     const state = assertValidState(initialState());
-    const session = assertValidSession(initialSession(config.currentSessionId, now));
+    const session = assertValidSession(
+      initialSession(config.currentSessionId, now),
+    );
     await writeJsonAtomic(paths.config, config, "Evidence config file");
     await writeJsonAtomic(paths.state, state, "Evidence state file");
     await writeJsonAtomic(
