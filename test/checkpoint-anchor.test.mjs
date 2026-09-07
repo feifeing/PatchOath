@@ -43,11 +43,12 @@ test("checkpoint finish blocks HEAD drift and remains recoverable at the origina
 
   const blocked = invoke(root, ["checkpoint", "--finish"]);
   assert.equal(blocked.code, 1);
+  assert.equal(blocked.stdout, "");
   assert.match(
     blocked.stderr,
     /Repository HEAD changed since the checkpoint started/iu,
   );
-  assert.match(blocked.stdout, /Return to the original repository anchor/iu);
+  assert.match(blocked.stderr, /Return to the original repository anchor/iu);
 
   const { state } = await loadStore(root);
   assert.equal(state.activeCheckpointId, checkpointId);
@@ -55,7 +56,7 @@ test("checkpoint finish blocks HEAD drift and remains recoverable at the origina
     (checkpoint) => checkpoint.id === checkpointId,
   );
   assert.equal(recording.status, "recording");
-  assert.equal(recording.after, undefined);
+  assert.equal(recording.after, null);
 
   git(root, ["reset", "--mixed", originalHead]);
   const finished = invoke(root, ["checkpoint", "--finish"]);
