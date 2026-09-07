@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { runCapsule } from "../src/capsule.mjs";
@@ -267,4 +267,27 @@ test("explicit capsule output refuses overwrite unless --force is supplied", asy
   const replaced = await readFile(target, "utf8");
   assert.match(replaced, /"kind": "patchoath-disclosure-capsule"/u);
   assert.equal(JSON.parse(forcedOut.value()).path, target);
+});
+
+test("capsule --force refuses to follow a symbolic-link output target", async () => {
+  const root = await createRepository();
+  const { config } = await initializeStore(root);
+  const checkpoint = checkpointFixture(root, config.currentSessionId);
+  await saveCheckpoint(root, checkpoint);
+
+  const outside = join(root, "outside-capsule.json");
+  const target = join(root, "capsule-link.json");
+  await writeFile(outside, "sentinel\n", "utf8");
+  await symlink(outside, target);
+  const stderr = memoryStream();
+
+  assert.equal(
+    await runCapsule(
+      [checkpoint.id, "--out", "capsule-link.json", "--force", "--json"],
+      { cwd: root, stdout: memoryStream(), stderr },
+    ),
+    1,
+  );
+  assert.match(stderr.value(), /Output must not be a symbolic link/iu);
+  assert.equal(await readFile(outside, "utf8"), "sentinel\n");
 });

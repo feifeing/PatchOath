@@ -1,6 +1,7 @@
-import { readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { LEGACY_REVIEW_RECORD_PREFIX, REVIEW_RECORD_PREFIX } from "./brand.mjs";
+import { writeFileAtomic } from "./safe-file.mjs";
 import { ensurePhysicalDirectory } from "./store-boundary.mjs";
 import {
   assertPrefixedStorageId,
@@ -35,9 +36,10 @@ export async function saveHistoricalEffectReview(root, record) {
   );
   const { directory } = await prepareHistoricalReviewDirectory(root, true);
   const path = join(directory, `${record.recordId}.json`);
-  const temporary = `${path}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf8");
-  await rename(temporary, path);
+  await writeFileAtomic(path, `${JSON.stringify(record, null, 2)}\n`, {
+    encoding: "utf8",
+    label: "Historical review evidence file",
+  });
   return path;
 }
 

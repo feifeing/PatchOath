@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import {
   CHECKPOINT_ID_PREFIX,
@@ -15,6 +15,7 @@ import {
 } from "./contract.mjs";
 import { createId } from "./id.mjs";
 import { createEvidenceReceipt } from "./receipt.mjs";
+import { writeFileAtomic } from "./safe-file.mjs";
 import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
 import {
   ensureEvidenceStoreLayout,
@@ -102,10 +103,11 @@ async function readJson(path, fallback = null) {
   }
 }
 
-async function writeJsonAtomic(path, value) {
-  const temporaryPath = `${path}.${process.pid}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
+async function writeJsonAtomic(path, value, label = "Evidence JSON file") {
+  await writeFileAtomic(path, `${JSON.stringify(value, null, 2)}\n`, {
+    encoding: "utf8",
+    label,
+  });
 }
 
 async function ensureLocalExclude(root) {
@@ -170,11 +172,15 @@ export async function initializeStore(root) {
       visual: { viewport: { width: 1440, height: 900 }, waitMs: 350 },
     };
     assertSessionId(config.currentSessionId);
-    await writeJsonAtomic(paths.config, config);
-    await writeJsonAtomic(paths.state, {
-      schemaVersion: 1,
-      activeCheckpointId: null,
-    });
+    await writeJsonAtomic(paths.config, config, "Evidence config file");
+    await writeJsonAtomic(
+      paths.state,
+      {
+        schemaVersion: 1,
+        activeCheckpointId: null,
+      },
+      "Evidence state file",
+    );
     await writeJsonAtomic(
       join(paths.sessions, `${config.currentSessionId}.json`),
       {
@@ -184,6 +190,7 @@ export async function initializeStore(root) {
         updatedAt: now,
         checkpoints: [],
       },
+      "Session evidence file",
     );
     created = true;
   }
@@ -201,7 +208,7 @@ export async function loadStore(root) {
 
 export async function saveState(root, state) {
   const { paths } = await ensureStoreBoundary(root, { create: true });
-  await writeJsonAtomic(paths.state, state);
+  await writeJsonAtomic(paths.state, state, "Evidence state file");
 }
 
 export async function createSession(root, name = null) {
@@ -218,8 +225,12 @@ export async function createSession(root, name = null) {
   assertSessionId(session.id);
   config.currentSessionId = session.id;
   config.updatedAt = now;
-  await writeJsonAtomic(paths.config, config);
-  await writeJsonAtomic(join(paths.sessions, `${session.id}.json`), session);
+  await writeJsonAtomic(paths.config, config, "Evidence config file");
+  await writeJsonAtomic(
+    join(paths.sessions, `${session.id}.json`),
+    session,
+    "Session evidence file",
+  );
   return session;
 }
 
@@ -257,6 +268,7 @@ export async function saveCheckpoint(root, checkpoint) {
   await writeJsonAtomic(
     join(paths.checkpoints, `${checkpoint.id}.json`),
     checkpoint,
+    "Checkpoint evidence file",
   );
 }
 
@@ -311,7 +323,7 @@ export async function appendCheckpointToSession(root, sessionId, checkpointId) {
   if (!session.checkpoints.includes(checkpointId))
     session.checkpoints.push(checkpointId);
   session.updatedAt = new Date().toISOString();
-  await writeJsonAtomic(sessionPath, session);
+  await writeJsonAtomic(sessionPath, session, "Session evidence file");
 }
 
 export async function removeCheckpointFromSession(
@@ -327,5 +339,5 @@ export async function removeCheckpointFromSession(
   if (!session) return;
   session.checkpoints = session.checkpoints.filter((id) => id !== checkpointId);
   session.updatedAt = new Date().toISOString();
-  await writeJsonAtomic(sessionPath, session);
+  await writeJsonAtomic(sessionPath, session, "Session evidence file");
 }

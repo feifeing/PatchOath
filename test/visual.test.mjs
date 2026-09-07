@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -17,6 +17,14 @@ function image(color) {
   return PNG.sync.write(png);
 }
 
+function capture(imagePath, hash, nodeCount, y) {
+  return {
+    image: imagePath,
+    dom: { hash, nodeCount },
+    layout: [{ key: "#hero", x: 0, y, width: 10, height: 10 }],
+  };
+}
+
 test("visual comparison reports honest pixel, layout, DOM, and semantic layers", async (context) => {
   const root = await mkdtemp(join(tmpdir(), "patchoath-visual-"));
   context.after(() => rm(root, { recursive: true, force: true }));
@@ -27,16 +35,8 @@ test("visual comparison reports honest pixel, layout, DOM, and semantic layers",
   await writeFile(afterPath, image([255, 255, 255]));
 
   const result = await compareVisualCaptures({
-    before: {
-      image: beforePath,
-      dom: { hash: "a", nodeCount: 1 },
-      layout: [{ key: "#hero", x: 0, y: 0, width: 10, height: 10 }],
-    },
-    after: {
-      image: afterPath,
-      dom: { hash: "b", nodeCount: 2 },
-      layout: [{ key: "#hero", x: 0, y: 5, width: 10, height: 10 }],
-    },
+    before: capture(beforePath, "a", 1, 0),
+    after: capture(afterPath, "b", 2, 5),
     diffOutputPath: diffPath,
   });
 
@@ -45,4 +45,27 @@ test("visual comparison reports honest pixel, layout, DOM, and semantic layers",
   assert.equal(result.dom.changed, true);
   assert.equal(result.semantic.supported, false);
   assert.ok((await readFile(diffPath)).length > 0);
+});
+
+test("visual comparison refuses a symlinked diff artifact target", async (context) => {
+  const root = await mkdtemp(join(tmpdir(), "patchoath-visual-symlink-"));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const beforePath = join(root, "before.png");
+  const afterPath = join(root, "after.png");
+  const diffPath = join(root, "diff.png");
+  const outside = join(root, "outside.png");
+  await writeFile(beforePath, image([0, 0, 0]));
+  await writeFile(afterPath, image([255, 255, 255]));
+  await writeFile(outside, "sentinel", "utf8");
+  await symlink(outside, diffPath);
+
+  await assert.rejects(
+    compareVisualCaptures({
+      before: capture(beforePath, "a", 1, 0),
+      after: capture(afterPath, "b", 2, 5),
+      diffOutputPath: diffPath,
+    }),
+    /Visual diff artifact file must not be a symbolic link/iu,
+  );
+  assert.equal(await readFile(outside, "utf8"), "sentinel");
 });
