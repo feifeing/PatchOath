@@ -105,6 +105,7 @@ export async function capturePage({
     const html = await page.content();
     await page.screenshot({
       path: temporaryOutputPath,
+      type: "png",
       fullPage: true,
       animations: "disabled",
     });
