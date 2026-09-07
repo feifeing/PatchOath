@@ -59,6 +59,28 @@ async function applyCheckpointContract(argv) {
   return clean;
 }
 
+async function maybeWarnIgnoredCoverage(topLevel, io) {
+  const command = topLevel[0];
+  if (!["checkpoint", "diff", "attest"].includes(command)) return;
+  if (
+    topLevel.some((token) =>
+      ["--json", "--abort", "--help", "-h", "--version", "-v"].includes(token),
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const { findRepositoryRoot } = await import("../src/git/git.mjs");
+    const { ignoredCoverageWarning } = await import("../src/git/ignored.mjs");
+    const root = findRepositoryRoot(process.cwd());
+    const warning = ignoredCoverageWarning(root);
+    if (warning) io.stderr.write(`warning ${warning}\n`);
+  } catch {
+    // Coverage warnings must never replace the command's primary result or error.
+  }
+}
+
 async function runInit(stdout) {
   const { findRepositoryRoot } = await import("../src/git/git.mjs");
   const { initializeStore } = await import("../src/core/store.mjs");
@@ -134,7 +156,9 @@ try {
       dispatch(topLevel, io),
     );
   }
+  await maybeWarnIgnoredCoverage(topLevel, io);
 } catch (error) {
   io.stderr.write(`error ${error.message}\n`);
+  await maybeWarnIgnoredCoverage(topLevel, io);
   process.exitCode = 1;
 }

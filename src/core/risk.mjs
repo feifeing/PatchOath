@@ -100,7 +100,10 @@ export function analyzeChangeSet({
   files = [],
   visual = null,
   contract = null,
+  evidenceCoverage = null,
 }) {
+  const resolvedEvidenceCoverage =
+    evidenceCoverage || files?.evidenceCoverage || null;
   const intent = inferPromptIntent(prompt);
   const enrichedFiles = enrichFiles(files);
   const modules = new Set(enrichedFiles.map((file) => file.module));
@@ -276,5 +279,6 @@ export function analyzeChangeSet({
     },
     files: enrichedFiles,
     visual,
+    evidenceCoverage: resolvedEvidenceCoverage,
   };
 }
