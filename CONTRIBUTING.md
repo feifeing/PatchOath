@@ -43,7 +43,7 @@ npx playwright install chromium
 npm run verify
 ```
 
-The repository, product, package, and primary CLI now use the PatchOath identity. Historical VibeTrace evidence and the deprecated compatibility shim remain only where backward verification requires them.
+The repository, product, package, and primary CLI now use the PatchOath identity. Pre-PatchOath evidence and the deprecated compatibility shim remain only where backward verification requires them.
 
 Useful focused commands:
 
