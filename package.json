@@ -41,13 +41,13 @@
     "vibe-coding",
     "blast-radius"
   ],
-  "homepage": "https://github.com/feifeing/vibetrace#readme",
+  "homepage": "https://github.com/feifeing/PatchOath#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/feifeing/vibetrace.git"
+    "url": "git+https://github.com/feifeing/PatchOath.git"
   },
   "bugs": {
-    "url": "https://github.com/feifeing/vibetrace/issues"
+    "url": "https://github.com/feifeing/PatchOath/issues"
   },
   "engines": {
     "node": ">=20"
