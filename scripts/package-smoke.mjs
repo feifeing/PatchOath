@@ -61,6 +61,7 @@ try {
     "bin/vibetrace.mjs",
     "src/cli.mjs",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "LEGAL.md",
     "THIRD_PARTY_NOTICES.md",
@@ -111,6 +112,8 @@ try {
   const legacyCli = join(installedRoot, "bin", "vibetrace.mjs");
   assert.equal(runCli(cli, consumer, ["--version"]), "0.3.0");
   assert.equal(runCli(legacyCli, consumer, ["--version"]), "0.3.0");
+  const changelog = await readFile(join(installedRoot, "CHANGELOG.md"), "utf8");
+  assert.match(changelog, /## 0\.3\.0/u);
 
   const project = join(consumer, "project");
   await mkdir(project, { recursive: true });
@@ -218,11 +221,6 @@ try {
       await readFile(join(project, "app.js"), "utf8"),
     ),
     "export const value = 1;\n",
-    "packed CLI should restore the Git-equivalent checkpoint state without dev dependencies",
-  );
-
-  console.log(
-    `Package smoke passed: ${packed.filename} (${packed.size} bytes, ${paths.length} files)`,
   );
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
