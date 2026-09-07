@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const failures = [];
+const currentRepositoryUrl = "https://github.com/feifeing/PatchOath";
+const retiredRepositoryFragment = "github.com/feifeing/vibetrace";
 
 function fail(message) {
   failures.push(message);
@@ -62,6 +64,21 @@ if (packageJson.private !== true) {
 if (packageJson.license !== "MIT") {
   fail(
     `Unexpected repository package license: ${packageJson.license || "missing"}.`,
+  );
+}
+if (packageJson.homepage !== `${currentRepositoryUrl}#readme`) {
+  fail(
+    `package.json homepage must use the current PatchOath repository: ${currentRepositoryUrl}#readme.`,
+  );
+}
+if (packageJson.repository?.url !== `git+${currentRepositoryUrl}.git`) {
+  fail(
+    `package.json repository URL must use the current PatchOath repository: git+${currentRepositoryUrl}.git.`,
+  );
+}
+if (packageJson.bugs?.url !== `${currentRepositoryUrl}/issues`) {
+  fail(
+    `package.json bugs URL must use the current PatchOath repository: ${currentRepositoryUrl}/issues.`,
   );
 }
 
@@ -162,12 +179,34 @@ for (const path of [
   }
 }
 
+for (const path of [
+  "README.md",
+  "SECURITY.md",
+  "CONTRIBUTING.md",
+  "docs/release-readiness.md",
+]) {
+  const text = await readText(path);
+  if (text.includes(retiredRepositoryFragment)) {
+    fail(`${path} still references the retired GitHub repository slug.`);
+  }
+}
+
 const readme = await readText("README.md");
 if (!readme.includes('<h1 align="center">PatchOath</h1>')) {
   fail("README hero must identify the product as PatchOath.");
 }
 if (!readme.includes("docs/patchoath-mark.svg")) {
   fail("README hero must use the reviewed PatchOath mark.");
+}
+if (
+  !readme.includes(
+    `${currentRepositoryUrl}/actions/workflows/ci.yml/badge.svg`,
+  )
+) {
+  fail("README CI badge must use the current PatchOath repository slug.");
+}
+if (!readme.includes(`git clone ${currentRepositoryUrl}.git`)) {
+  fail("README clone instructions must use the current PatchOath repository slug.");
 }
 if (!readme.includes("## Legacy compatibility")) {
   fail(
@@ -284,6 +323,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Rights/release gate passed: PatchOath package/CLI metadata match the reviewed migration baseline, public product surfaces contain no retired-brand copy or CLI examples, CHANGELOG.md documents the current release line, package remains private, dependency licenses match the reviewed baseline, required notices and brand-clearance records are present, ${cssFiles.length} dashboard stylesheet(s) contain no unreviewed remote CSS assets, and no bundled fonts were found.`,
+    `Rights/release gate passed: PatchOath package/CLI/repository metadata match the reviewed migration baseline, public product surfaces contain no retired-brand copy or retired repository links, CHANGELOG.md documents the current release line, package remains private, dependency licenses match the reviewed baseline, required notices and brand-clearance records are present, ${cssFiles.length} dashboard stylesheet(s) contain no unreviewed remote CSS assets, and no bundled fonts were found.`,
   );
 }
