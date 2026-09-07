@@ -28,6 +28,7 @@ Until the first tagged stable release, only the current `main` branch receives s
 - Visual capture visits only an explicit `http://` or `https://` URL supplied by the user.
 - Snapshot capture uses a temporary Git index. It does not intentionally move `HEAD`, replace the real index, stash the worktree, or reset the current branch.
 - `patchoath restore` is a dry run unless `--apply` is supplied explicitly.
+- Restore source checkpoints must have a currently valid Evidence Receipt and before/after snapshot refs that still resolve to their recorded Git commits before PatchOath will produce a READY plan or apply a restore.
 - Restore is blocked when the current worktree differs from the recorded checkpoint after-state, and the drift guard is checked again immediately before mutation.
 - Restore uses a temporary Git index and verifies that `HEAD` and the real index remain unchanged.
 - After an applied restore, PatchOath snapshots the resulting worktree and verifies that it matches the recorded checkpoint before-state.
@@ -39,9 +40,9 @@ Until the first tagged stable release, only the current `main` branch receives s
 
 ## Restore guarantee
 
-A successful guarded restore proves a narrow operational property: PatchOath observed the expected checkpoint after-state immediately before restore and produced a worktree matching the recorded before-state without intentionally changing `HEAD` or the real index.
+A successful guarded restore proves a narrow operational property: PatchOath verified the checkpoint's currently stored receipt and snapshot-ref linkage, observed the expected checkpoint after-state immediately before restore, and produced a worktree matching the recorded before-state without intentionally changing `HEAD` or the real index.
 
-It is not a substitute for backups, repository permissions, branch protection, code review, dependency review, or semantic correctness checks.
+It is not a substitute for backups, repository permissions, branch protection, code review, dependency review, or semantic correctness checks. Receipt/ref verification also does not protect against an actor who controls and consistently rewrites all local evidence and Git refs.
 
 ## Evidence and disclosure
 
