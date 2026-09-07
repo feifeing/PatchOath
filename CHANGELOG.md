@@ -4,6 +4,15 @@ All notable user-facing changes to PatchOath are recorded here.
 
 The project is still alpha. Entries describe implemented behavior; they are not promises of semantic correctness, security, legal compliance, or future API stability.
 
+## Unreleased
+
+### Evidence coverage
+
+- Detect non-PatchOath Git-ignored path roots during change analysis without reading or storing ignored file contents.
+- Persist aggregate ignored-root coverage metadata in analysis while keeping ignored path names out of the stored coverage record.
+- Warn human-readable `checkpoint`, `diff`, and `attest` flows when ignored content sits outside the Git snapshot.
+- Make Evidence Receipt v1/v2 verification explicitly report that ignored-path evidence is not bound and ignored content is not captured.
+
 ## 0.3.0 — 2026-09
 
 ### Product identity
