@@ -22,6 +22,8 @@ Until the first tagged stable release, only the current `main` branch receives s
 - Generated reports only ingest referenced visual files that resolve to regular files physically contained within the selected evidence store's `artifacts/` directory. Lexical path escapes and canonical symlink escapes are rejected.
 - Rejected report asset paths are not echoed into the generated report payload; only aggregate ingestion counts and reason classes are retained.
 - Missing or rejected visual assets degrade to unavailable report evidence rather than widening the local disclosure boundary.
+- Report output checkpoint IDs are validated before path construction, and the evidence-store/report roots must be physical directories rather than symlinks.
+- Existing derived checkpoint report directories are rebuilt from an empty directory so stale destination-file or nested asset symlinks cannot redirect report writes.
 - `patchoath restore` is a dry run unless `--apply` is supplied explicitly.
 - Restore is blocked when the current worktree differs from the recorded checkpoint after-state, and the drift guard is checked again immediately before mutation.
 - Restore uses a temporary Git index and verifies that `HEAD` and the real index remain unchanged.

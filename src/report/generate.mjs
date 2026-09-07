@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { computeObservedContractDelta } from "../core/contract-delta.mjs";
@@ -9,12 +9,15 @@ import {
 import { verifyEvidenceReceipt } from "../core/receipt.mjs";
 import { verifyHistoricalEffectReview } from "../core/review-record.mjs";
 import { listHistoricalEffectReviews } from "../core/review-store.mjs";
-import { storePaths } from "../core/store.mjs";
 import { collectCommitDiff } from "../git/diff.mjs";
 import {
   copyReportEvidenceAsset,
   createReportAssetAudit,
 } from "./asset-boundary.mjs";
+import {
+  assertReportCheckpointIds,
+  prepareReportOutput,
+} from "./output-boundary.mjs";
 
 const sourceWebDirectory = fileURLToPath(
   new URL("../../web/", import.meta.url),
@@ -169,14 +172,16 @@ function portableCheckpoint(root, checkpoint, assetMap, historicalRecords) {
 }
 
 export async function generateReport(root, checkpoints, selectedId) {
+  assertReportCheckpointIds(checkpoints);
   const selected =
     checkpoints.find((checkpoint) => checkpoint.id === selectedId) ||
     checkpoints[0];
   if (!selected)
     throw new Error("There are no completed checkpoints to report.");
-  const reportDirectory = join(storePaths(root).reports, selected.id);
-  const assetDirectory = join(reportDirectory, "assets");
-  await mkdir(assetDirectory, { recursive: true });
+  const { reportDirectory, assetDirectory } = await prepareReportOutput(
+    root,
+    selected.id,
+  );
 
   for (const name of [
     "index.html",

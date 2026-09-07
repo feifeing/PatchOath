@@ -12,6 +12,8 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 - Reject absolute/path-traversal references outside that boundary and reject symlink escapes after canonical `realpath` resolution.
 - Keep rejected source paths out of generated report payloads; reports expose only aggregate ingestion counts and reason classes.
 - Preserve graceful degradation: missing or rejected visual evidence renders as unavailable instead of widening disclosure scope.
+- Validate report checkpoint IDs before constructing output paths, and reject symlinked evidence-store/report-root destinations.
+- Rebuild each derived checkpoint report from an empty directory so stale nested symlinks cannot redirect generated files outside the report boundary.
 
 ## 0.3.0 — 2026-09
 
