@@ -36,14 +36,14 @@ See [`LEGAL.md`](LEGAL.md), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), 
 ## Local setup
 
 ```bash
-git clone https://github.com/feifeing/vibetrace.git
-cd vibetrace
+git clone https://github.com/feifeing/PatchOath.git
+cd PatchOath
 npm install
 npx playwright install chromium
 npm run verify
 ```
 
-The repository slug is temporarily retained during the v0.3 brand migration. Product-facing commands use `patchoath`.
+The repository, product, package, and primary CLI now use the PatchOath identity. Historical VibeTrace evidence and the deprecated compatibility shim remain only where backward verification requires them.
 
 Useful focused commands:
 
