@@ -199,14 +199,14 @@ if (!readme.includes("docs/patchoath-mark.svg")) {
   fail("README hero must use the reviewed PatchOath mark.");
 }
 if (
-  !readme.includes(
-    `${currentRepositoryUrl}/actions/workflows/ci.yml/badge.svg`,
-  )
+  !readme.includes(`${currentRepositoryUrl}/actions/workflows/ci.yml/badge.svg`)
 ) {
   fail("README CI badge must use the current PatchOath repository slug.");
 }
 if (!readme.includes(`git clone ${currentRepositoryUrl}.git`)) {
-  fail("README clone instructions must use the current PatchOath repository slug.");
+  fail(
+    "README clone instructions must use the current PatchOath repository slug.",
+  );
 }
 if (!readme.includes("## Legacy compatibility")) {
   fail(
