@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import {
   CHECKPOINT_ID_PREFIX,
@@ -14,6 +14,7 @@ import {
   setRuntimeChangeContract,
 } from "./contract.mjs";
 import { createId } from "./id.mjs";
+import { writeManagedFileAtomic } from "./managed-file.mjs";
 import { createEvidenceReceipt } from "./receipt.mjs";
 import { CONFIG_SCHEMA_VERSION, assertValidCheckpoint } from "./schema.mjs";
 import {
@@ -103,9 +104,10 @@ async function readJson(path, fallback = null) {
 }
 
 async function writeJsonAtomic(path, value) {
-  const temporaryPath = `${path}.${process.pid}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
+  await writeManagedFileAtomic(path, `${JSON.stringify(value, null, 2)}\n`, {
+    encoding: "utf8",
+    label: "Managed JSON evidence file",
+  });
 }
 
 async function ensureLocalExclude(root) {
