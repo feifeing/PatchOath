@@ -134,7 +134,11 @@ test("generated reports null rejected visual assets without disclosing their sou
         directoriesChanged: 0,
         binaryFiles: 0,
       },
-      contractCompliance: { declared: false, status: "not-declared", violations: [] },
+      contractCompliance: {
+        declared: false,
+        status: "not-declared",
+        violations: [],
+      },
       blastRadius: {
         score: 0,
         level: "contained",
@@ -157,7 +161,10 @@ test("generated reports null rejected visual assets without disclosing their sou
   };
 
   const report = await generateReport(root, [checkpoint], checkpoint.id);
-  const source = await readFile(join(report.directory, "report-data.js"), "utf8");
+  const source = await readFile(
+    join(report.directory, "report-data.js"),
+    "utf8",
+  );
   const prefix = "window.__PATCHOATH_REPORT__ = ";
   const payload = JSON.parse(source.slice(prefix.length).replace(/;\s*$/u, ""));
 
