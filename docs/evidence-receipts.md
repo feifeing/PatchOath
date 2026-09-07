@@ -60,6 +60,31 @@ File paths are normalized to `/`, file rows are sorted, and signal arrays are so
 
 The receipt also stores an explicit SHA-256 digest of the normalized manifest for inspection, although the manifest itself is already part of the overall receipt evidence.
 
+## Git-ignored content is an explicit coverage boundary
+
+PatchOath's Git snapshots intentionally preserve Git ignore semantics. Tracked files and untracked non-ignored files can enter the temporary snapshot; Git-ignored content does not.
+
+PatchOath now makes that limitation explicit instead of silently presenting the snapshot as whole-worktree evidence:
+
+- `checkpoint`, `diff`, and `attest` human-readable flows warn when non-PatchOath ignored roots are present;
+- change analysis records only an aggregate ignored-root count and SHA-256 digest of the root-name set;
+- PatchOath's own local evidence stores are excluded from that count;
+- ignored path names are not persisted by this coverage detector; and
+- ignored file contents are never read or captured by the detector.
+
+The aggregate digest is a coverage marker, not proof that ignored content did or did not change. In particular, an unchanged ignored-root set does **not** prove that files inside an ignored directory were unchanged.
+
+Evidence Receipt v2 does not bind this ignored-worktree coverage metadata. Verification therefore reports both:
+
+```json
+{
+  "ignoredPathEvidenceBound": false,
+  "ignoredContentCaptured": false
+}
+```
+
+This is intentional. PatchOath would rather expose a precise limitation than quietly expand evidence collection into ignored build outputs, dependency trees, local secrets, or other content the repository deliberately excluded from Git.
+
 ## Why v2 was needed
 
 Evidence Receipt v1 bound aggregate and derived analysis such as summary, Contract compliance, Blast Radius, and risk, plus Git before/after object IDs. It did **not** directly bind the stored `analysis.files` manifest, inferred intent object, or visual-analysis object.
@@ -79,7 +104,7 @@ PatchOath does not silently replace a stored v1 receipt with a v2 receipt during
 A successful v1 verification therefore reports explicit legacy coverage:
 
 ```text
-coverage legacy-v1 · file manifest / intent analysis / visual analysis not bound
+coverage legacy-v1 · file manifest / intent analysis / visual analysis / ignored content not bound
 ```
 
 Machine-readable verification exposes the same distinction:
@@ -91,6 +116,8 @@ Machine-readable verification exposes the same distinction:
     "fileManifestBound": false,
     "intentAnalysisBound": false,
     "visualAnalysisBound": false,
+    "ignoredPathEvidenceBound": false,
+    "ignoredContentCaptured": false,
     "scope": "legacy-v1"
   }
 }
@@ -105,6 +132,8 @@ A v2 receipt reports:
     "fileManifestBound": true,
     "intentAnalysisBound": true,
     "visualAnalysisBound": true,
+    "ignoredPathEvidenceBound": false,
+    "ignoredContentCaptured": false,
     "scope": "effect-manifest-v2"
   }
 }
@@ -144,7 +173,7 @@ The full command also checks, when available:
 
 A receipt coverage label describes what metadata/analysis the receipt itself binds. It does not replace those independent Git/ref/artifact checks.
 
-Likewise, a valid v2 receipt does not prove that the prompt interpretation was correct or that the resulting code is safe. It proves only that the versioned evidence projection still matches.
+Likewise, a valid v2 receipt does not prove that the prompt interpretation was correct, that ignored content was unchanged, or that the resulting code is safe. It proves only that the versioned evidence projection still matches.
 
 ## Privacy boundary
 
