@@ -1,17 +1,9 @@
 import { createHash } from "node:crypto";
-import {
-  isAbsolute,
-  relative,
-  resolve as resolvePath,
-  sep,
-} from "node:path";
+import { isAbsolute, relative, resolve as resolvePath, sep } from "node:path";
 import { checkpointRefCandidates } from "./core/brand.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import { readFileSafe } from "./core/safe-file.mjs";
-import {
-  inspectArtifactDirectory,
-  listCheckpoints,
-} from "./core/store.mjs";
+import { inspectArtifactDirectory, listCheckpoints } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 
 const HELP = `patchoath verify [checkpoint] [--json]\n\nRecompute a completed checkpoint's Evidence Receipt and verify referenced Git/visual evidence when present.\nThe command exits 0 when evidence verifies and 2 when metadata, Git evidence, or artifact evidence no longer matches. Receipt coverage is versioned; pre-v0.3 receipts and refs remain verifiable with their original scope.\n\nOptions:\n  --json     Emit machine-readable verification output\n  -h, --help Show help`;
