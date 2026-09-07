@@ -210,8 +210,7 @@ export async function generateReport(root, checkpoints, selectedId) {
         destination,
         assetAudit,
       );
-      if (result.copied)
-        assetMap.set(source, `./assets/${destinationName}`);
+      if (result.copied) assetMap.set(source, `./assets/${destinationName}`);
     }
   }
 
