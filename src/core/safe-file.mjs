@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
+import { constants } from "node:fs";
 import { lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+
+function unsafeFileError(message) {
+  const error = new Error(message);
+  error.code = "PATCHOATH_UNSAFE_FILE";
+  return error;
+}
 
 async function lstatIfPresent(path) {
   try {
@@ -19,10 +26,10 @@ export async function assertSafeFileTarget(
   const existing = await lstatIfPresent(path);
   if (!existing) return { exists: false, path };
   if (existing.isSymbolicLink()) {
-    throw new Error(`${label} must not be a symbolic link.`);
+    throw unsafeFileError(`${label} must not be a symbolic link.`);
   }
   if (!existing.isFile()) {
-    throw new Error(`${label} must be a regular file.`);
+    throw unsafeFileError(`${label} must be a regular file.`);
   }
   if (!allowExisting) {
     const error = new Error(`${label} already exists: ${path}`);
@@ -30,6 +37,49 @@ export async function assertSafeFileTarget(
     throw error;
   }
   return { exists: true, path };
+}
+
+export async function readFileSafe(
+  path,
+  options = undefined,
+  label = "Evidence file",
+) {
+  const existing = await lstatIfPresent(path);
+  if (!existing) {
+    const error = new Error(`${label} was not found: ${path}`);
+    error.code = "ENOENT";
+    throw error;
+  }
+  if (existing.isSymbolicLink()) {
+    throw unsafeFileError(`${label} must not be a symbolic link.`);
+  }
+  if (!existing.isFile()) {
+    throw unsafeFileError(`${label} must be a regular file.`);
+  }
+
+  const flags =
+    process.platform === "win32"
+      ? "r"
+      : constants.O_RDONLY | (constants.O_NOFOLLOW || 0);
+  let handle;
+  try {
+    handle = await open(path, flags);
+  } catch (error) {
+    if (error.code === "ELOOP") {
+      throw unsafeFileError(`${label} must not be a symbolic link.`);
+    }
+    throw error;
+  }
+
+  try {
+    const opened = await handle.stat();
+    if (!opened.isFile()) {
+      throw unsafeFileError(`${label} must be a regular file.`);
+    }
+    return await handle.readFile(options);
+  } finally {
+    await handle.close();
+  }
 }
 
 async function createExclusiveSibling(path) {
