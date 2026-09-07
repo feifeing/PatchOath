@@ -149,11 +149,14 @@ function writeCoverage(stdout, receipt) {
   if (!coverage) return;
   if (coverage.evidenceVersion === 1) {
     stdout.write(
-      "coverage legacy-v1 · file manifest / intent analysis / visual analysis not bound\n",
+      "coverage legacy-v1 · file manifest / intent analysis / visual analysis / ignored content not bound\n",
     );
     return;
   }
-  stdout.write(`coverage ${coverage.scope}\n`);
+  const ignored = coverage.ignoredContentCaptured
+    ? "ignored content captured"
+    : "ignored content not bound";
+  stdout.write(`coverage ${coverage.scope} · ${ignored}\n`);
 }
 
 export async function runVerify(argv = process.argv.slice(3), io = {}) {
