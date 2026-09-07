@@ -12,6 +12,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { saveHistoricalEffectReview } from "../src/core/review-store.mjs";
+import { CONFIG_SCHEMA_VERSION } from "../src/core/schema.mjs";
 import {
   ensureStoreBoundary,
   initializeStore,
@@ -20,7 +22,6 @@ import {
   saveCheckpoint,
   storePaths,
 } from "../src/core/store.mjs";
-import { saveHistoricalEffectReview } from "../src/core/review-store.mjs";
 import { createRepository, git } from "../test-support/helpers.mjs";
 
 async function assertMissing(path) {
@@ -148,7 +149,7 @@ test("physical legacy evidence stores remain supported", async (context) => {
   );
   assert.equal(
     JSON.parse(await readFile(initialized.paths.config, "utf8")).schemaVersion,
-    2,
+    CONFIG_SCHEMA_VERSION,
   );
   await assertMissing(join(root, ".patchoath"));
 });
