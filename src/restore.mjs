@@ -83,7 +83,9 @@ function verifyRestoreSnapshot(root, checkpoint, phase) {
 
   return {
     valid: false,
-    reason: mismatchRef ? `${phase}-git-ref-mismatch` : `${phase}-git-ref-missing`,
+    reason: mismatchRef
+      ? `${phase}-git-ref-mismatch`
+      : `${phase}-git-ref-missing`,
     ref: mismatchRef,
   };
 }
