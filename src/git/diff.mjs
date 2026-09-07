@@ -8,7 +8,7 @@ function parseNameStatus(output) {
   if (tokens.at(-1) === "") tokens.pop();
   const rows = [];
 
-  for (let index = 0; index < tokens.length; ) {
+  for (let index = 0; index < tokens.length;) {
     let statusToken = tokens[index++];
     let firstPath = "";
     if (statusToken.includes("\t")) {
@@ -48,7 +48,7 @@ function parseNumstat(output) {
   if (tokens.at(-1) === "") tokens.pop();
   const rows = [];
 
-  for (let index = 0; index < tokens.length; ) {
+  for (let index = 0; index < tokens.length;) {
     const fields = (tokens[index++] || "").split("\t");
     const additionsRaw = fields.shift() || "0";
     const deletionsRaw = fields.shift() || "0";
