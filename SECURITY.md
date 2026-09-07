@@ -19,6 +19,9 @@ Until the first tagged stable release, only the current `main` branch receives s
 - Legacy `.vibetrace/` evidence may still be read for migration compatibility; PatchOath does not require rewriting it to validate old records.
 - Visual capture visits only an explicit `http://` or `https://` URL supplied by the user.
 - Snapshot capture uses a temporary Git index. It does not intentionally move `HEAD`, replace the real index, stash the worktree, or reset the current branch.
+- Generated reports only ingest referenced visual files that resolve to regular files physically contained within the selected evidence store's `artifacts/` directory. Lexical path escapes and canonical symlink escapes are rejected.
+- Rejected report asset paths are not echoed into the generated report payload; only aggregate ingestion counts and reason classes are retained.
+- Missing or rejected visual assets degrade to unavailable report evidence rather than widening the local disclosure boundary.
 - `patchoath restore` is a dry run unless `--apply` is supplied explicitly.
 - Restore is blocked when the current worktree differs from the recorded checkpoint after-state, and the drift guard is checked again immediately before mutation.
 - Restore uses a temporary Git index and verifies that `HEAD` and the real index remain unchanged.

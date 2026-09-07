@@ -1,5 +1,5 @@
-import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative } from "node:path";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { computeObservedContractDelta } from "../core/contract-delta.mjs";
 import {
@@ -11,21 +11,14 @@ import { verifyHistoricalEffectReview } from "../core/review-record.mjs";
 import { listHistoricalEffectReviews } from "../core/review-store.mjs";
 import { storePaths } from "../core/store.mjs";
 import { collectCommitDiff } from "../git/diff.mjs";
+import {
+  copyReportEvidenceAsset,
+  createReportAssetAudit,
+} from "./asset-boundary.mjs";
 
 const sourceWebDirectory = fileURLToPath(
   new URL("../../web/", import.meta.url),
 );
-
-async function copyIfPresent(source, destination) {
-  try {
-    await access(source);
-    await mkdir(dirname(destination), { recursive: true });
-    await copyFile(source, destination);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function unavailable(reason, detail = null) {
   return { status: "unavailable", reason, detail };
@@ -201,6 +194,7 @@ export async function generateReport(root, checkpoints, selectedId) {
   }
 
   const assetMap = new Map();
+  const assetAudit = createReportAssetAudit();
   for (const checkpoint of checkpoints) {
     const sources = [
       checkpoint.visual?.before?.image,
@@ -210,9 +204,13 @@ export async function generateReport(root, checkpoints, selectedId) {
     for (const source of sources) {
       const destinationName = `${checkpoint.id}-${basename(source)}`;
       const destination = join(assetDirectory, destinationName);
-      const sourcePath = isAbsolute(source) ? source : join(root, source);
-      if (await copyIfPresent(sourcePath, destination))
-        assetMap.set(source, `./assets/${destinationName}`);
+      const result = await copyReportEvidenceAsset(
+        root,
+        source,
+        destination,
+        assetAudit,
+      );
+      if (result.copied) assetMap.set(source, `./assets/${destinationName}`);
     }
   }
 
@@ -222,6 +220,7 @@ export async function generateReport(root, checkpoints, selectedId) {
     mode: "report",
     selectedId: selected.id,
     generatedAt: new Date().toISOString(),
+    assetIngestion: assetAudit,
     checkpoints: checkpoints.map((checkpoint) =>
       portableCheckpoint(root, checkpoint, assetMap, historicalRecords),
     ),

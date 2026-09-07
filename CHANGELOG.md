@@ -4,6 +4,15 @@ All notable user-facing changes to PatchOath are recorded here.
 
 The project is still alpha. Entries describe implemented behavior; they are not promises of semantic correctness, security, legal compliance, or future API stability.
 
+## Unreleased
+
+### Disclosure and report safety
+
+- Restrict report visual-asset ingestion to regular files physically contained within the selected PatchOath evidence store's `artifacts/` root.
+- Reject absolute/path-traversal references outside that boundary and reject symlink escapes after canonical `realpath` resolution.
+- Keep rejected source paths out of generated report payloads; reports expose only aggregate ingestion counts and reason classes.
+- Preserve graceful degradation: missing or rejected visual evidence renders as unavailable instead of widening disclosure scope.
+
 ## 0.3.0 — 2026-09
 
 ### Product identity
