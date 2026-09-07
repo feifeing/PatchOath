@@ -50,11 +50,7 @@ export async function assertManagedFileDestination(
 
 export async function readManagedFile(
   path,
-  {
-    encoding = undefined,
-    label = "Managed evidence file",
-    within = null,
-  } = {},
+  { encoding = undefined, label = "Managed evidence file", within = null } = {},
 ) {
   const resolvedPath = resolve(path);
   if (within) {
