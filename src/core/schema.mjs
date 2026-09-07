@@ -72,7 +72,9 @@ export function validateConfig(value) {
     issues.push(`schemaVersion must be ${CONFIG_SCHEMA_VERSION}.`);
   }
   if (!validSessionId(value.currentSessionId)) {
-    issues.push("currentSessionId must be a repository-local session_* identifier.");
+    issues.push(
+      "currentSessionId must be a repository-local session_* identifier.",
+    );
   }
   if (!hasText(value.createdAt)) {
     issues.push("createdAt is required.");
@@ -86,14 +88,18 @@ export function validateConfig(value) {
     } else {
       const viewport = value.visual.viewport;
       if (!isRecord(viewport)) {
-        issues.push("visual.viewport must be an object when visual is present.");
+        issues.push(
+          "visual.viewport must be an object when visual is present.",
+        );
       } else if (
         !Number.isInteger(viewport.width) ||
         viewport.width <= 0 ||
         !Number.isInteger(viewport.height) ||
         viewport.height <= 0
       ) {
-        issues.push("visual.viewport width and height must be positive integers.");
+        issues.push(
+          "visual.viewport width and height must be positive integers.",
+        );
       }
       if (
         value.visual.waitMs !== undefined &&
@@ -142,7 +148,11 @@ export function validateSession(value) {
   if (value.updatedAt !== undefined && !hasText(value.updatedAt)) {
     issues.push("updatedAt must be a non-empty string when present.");
   }
-  if (value.name !== undefined && value.name !== null && typeof value.name !== "string") {
+  if (
+    value.name !== undefined &&
+    value.name !== null &&
+    typeof value.name !== "string"
+  ) {
     issues.push("name must be a string or null when present.");
   }
   if (!Array.isArray(value.checkpoints)) {
