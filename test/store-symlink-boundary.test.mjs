@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   access,
+  lstat,
   mkdir,
   mkdtemp,
   readFile,
@@ -12,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { writeManagedFileAtomic } from "../src/core/managed-file.mjs";
 import { saveHistoricalEffectReview } from "../src/core/review-store.mjs";
 import { CONFIG_SCHEMA_VERSION } from "../src/core/schema.mjs";
 import {
@@ -38,6 +40,13 @@ async function outsideDirectory(context, prefix) {
   const directory = await mkdtemp(join(tmpdir(), prefix));
   context.after(() => rm(directory, { recursive: true, force: true }));
   return directory;
+}
+
+async function outsideFile(context, prefix = "patchoath-managed-file-") {
+  const directory = await outsideDirectory(context, prefix);
+  const path = join(directory, "sentinel.txt");
+  await writeFile(path, "keep-me", "utf8");
+  return path;
 }
 
 function checkpointFixture(root, id = "po_store_boundary_fixture") {
@@ -170,4 +179,73 @@ test("managed store boundary rejects a symlinked report directory even for non-r
     await readFile(join(outside, "sentinel.txt"), "utf8"),
     "untouched",
   );
+});
+
+test("managed atomic writes reject a symlink destination without touching its target", async (context) => {
+  const directory = await outsideDirectory(
+    context,
+    "patchoath-managed-destination-",
+  );
+  const target = await outsideFile(context);
+  const destination = join(directory, "evidence.json");
+  await symlink(target, destination);
+
+  await assert.rejects(
+    writeManagedFileAtomic(destination, "replacement", {
+      encoding: "utf8",
+      label: "Test evidence file",
+    }),
+    /Test evidence file must not be a symbolic link/iu,
+  );
+  assert.equal(await readFile(target, "utf8"), "keep-me");
+});
+
+test("managed atomic writes do not reuse the old predictable pid temporary path", async (context) => {
+  const directory = await outsideDirectory(context, "patchoath-managed-temp-");
+  const target = await outsideFile(context);
+  const destination = join(directory, "evidence.json");
+  const predictableTemporary = `${destination}.${process.pid}.tmp`;
+  await symlink(target, predictableTemporary);
+
+  await writeManagedFileAtomic(destination, "safe-write", {
+    encoding: "utf8",
+  });
+
+  assert.equal(await readFile(destination, "utf8"), "safe-write");
+  assert.equal(await readFile(target, "utf8"), "keep-me");
+  assert.equal((await lstat(predictableTemporary)).isSymbolicLink(), true);
+});
+
+test("checkpoint persistence rejects a pre-existing checkpoint file symlink", async (context) => {
+  const root = await repository(context);
+  const target = await outsideFile(context, "patchoath-checkpoint-file-");
+  await initializeStore(root);
+  const checkpoint = checkpointFixture(root, "po_checkpoint_file_symlink");
+  const destination = join(
+    storePaths(root).checkpoints,
+    `${checkpoint.id}.json`,
+  );
+  await symlink(target, destination);
+
+  await assert.rejects(
+    saveCheckpoint(root, checkpoint),
+    /Managed JSON evidence file must not be a symbolic link/iu,
+  );
+  assert.equal(await readFile(target, "utf8"), "keep-me");
+});
+
+test("historical review persistence rejects a pre-existing record file symlink", async (context) => {
+  const root = await repository(context);
+  const target = await outsideFile(context, "patchoath-review-file-");
+  const initialized = await initializeStore(root);
+  await mkdir(initialized.paths.reviews);
+  const recordId = "por_review_file_symlink";
+  const destination = join(initialized.paths.reviews, `${recordId}.json`);
+  await symlink(target, destination);
+
+  await assert.rejects(
+    saveHistoricalEffectReview(root, { recordId }),
+    /Historical review record must not be a symbolic link/iu,
+  );
+  assert.equal(await readFile(target, "utf8"), "keep-me");
 });

@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { readFile } from "node:fs/promises";
+import { writeManagedFileAtomic } from "../core/managed-file.mjs";
 
 async function loadPng() {
   try {
@@ -111,8 +111,9 @@ export async function compareVisualCaptures({
     }
   }
 
-  await mkdir(dirname(diffOutputPath), { recursive: true });
-  await writeFile(diffOutputPath, PNG.sync.write(diff));
+  await writeManagedFileAtomic(diffOutputPath, PNG.sync.write(diff), {
+    label: "Visual diff artifact",
+  });
 
   return {
     pixel: {

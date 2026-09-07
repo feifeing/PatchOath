@@ -4,7 +4,7 @@ PatchOath reads Git state, writes local checkpoint evidence, can capture an expl
 
 ## Reporting a vulnerability
 
-Please use [GitHub private vulnerability reporting](https://github.com/feifeing/vibetrace/security/advisories/new). Do not open a public issue containing exploit details, private repository content, credentials, tokens, screenshots, prompt text, or proprietary evidence.
+Please use [GitHub private vulnerability reporting](https://github.com/feifeing/PatchOath/security/advisories/new). Do not open a public issue containing exploit details, private repository content, credentials, tokens, screenshots, prompt text, or proprietary evidence.
 
 Include the affected command, operating system, Node and Git versions, expected behavior, observed behavior, and a minimal reproduction when it is safe to share.
 
@@ -20,6 +20,8 @@ Until the first tagged stable release, only the current `main` branch receives s
 - PatchOath-managed evidence-store roots and core checkpoint/session/artifact/report directories must resolve to physical directories inside the repository rather than symlinks.
 - Managed historical-review and default capsule directories use the same physical-directory boundary; explicitly supplied capsule `--out` paths remain an intentional user-controlled export surface.
 - Per-checkpoint visual artifact directories are validated separately so a nested `artifacts/<checkpoint-id>` symlink cannot redirect screenshot or diff writes.
+- PatchOath-managed files use exclusive randomized temporary files plus atomic replacement and reject pre-existing file symlinks or non-regular destinations before managed writes.
+- Visual screenshots are captured to memory before managed-file persistence, so Playwright does not write directly through a pre-existing `before.png` or `after.png` symlink; generated visual diffs use the same managed-file writer.
 - Visual capture visits only an explicit `http://` or `https://` URL supplied by the user.
 - Snapshot capture uses a temporary Git index. It does not intentionally move `HEAD`, replace the real index, stash the worktree, or reset the current branch.
 - `patchoath restore` is a dry run unless `--apply` is supplied explicitly.
