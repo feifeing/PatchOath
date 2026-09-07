@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -96,6 +96,7 @@ test("historical review persistence refuses a symbolic-link evidence file", asyn
   const reviews = join(storePaths(root).directory, "reviews");
   const path = join(reviews, `${recordId}.json`);
   const outside = join(root, "outside-review.json");
+  await mkdir(reviews, { recursive: true });
   await writeFile(outside, "sentinel\n", "utf8");
   await symlink(outside, path);
 
