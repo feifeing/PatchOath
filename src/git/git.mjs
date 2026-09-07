@@ -107,8 +107,7 @@ export function assertRepositoryAnchor(
 
   const fields = inspection.drift.map((item) => item.field).join(" and ");
   throw new GitError(
-    `Repository ${fields} changed since the checkpoint started. PatchOath will not ${action} across repository history.`,
-    `expected ${anchorLabel(inspection.expected)}; current ${anchorLabel(inspection.current)}. Return to the original repository anchor and retry, or abort the checkpoint.`,
+    `Repository ${fields} changed since the checkpoint started. PatchOath will not ${action} across repository history. Expected ${anchorLabel(inspection.expected)}; current ${anchorLabel(inspection.current)}. Return to the original repository anchor and retry, or abort the checkpoint.`,
   );
 }
 
