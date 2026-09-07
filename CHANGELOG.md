@@ -4,6 +4,15 @@ All notable user-facing changes to PatchOath are recorded here.
 
 The project is still alpha. Entries describe implemented behavior; they are not promises of semantic correctness, security, legal compliance, or future API stability.
 
+## Unreleased
+
+### Evidence-store safety
+
+- Require PatchOath-managed evidence-store roots and core checkpoint/session/artifact/report directories to be physical repository-local directories rather than symlinks.
+- Apply the same boundary to managed historical-review and default capsule directories while leaving explicit capsule `--out` exports user-controlled.
+- Validate per-checkpoint visual artifact directories so a nested `artifacts/<checkpoint-id>` symlink cannot redirect screenshot or diff writes.
+- Preserve physical legacy `.vibetrace/` stores for migration compatibility.
+
 ## 0.3.0 — 2026-09
 
 ### Product identity
