@@ -2,7 +2,7 @@
 
 import { BRAND_NAME, CLI_NAME, TAGLINE, VERSION } from "../src/core/brand.mjs";
 
-const HELP = `${BRAND_NAME} ${VERSION} — ${TAGLINE}\n\nUsage:\n  ${CLI_NAME} init\n  ${CLI_NAME} checkpoint --prompt "Change the primary button color" [contract options]\n  ${CLI_NAME} checkpoint --finish\n  ${CLI_NAME} diff [checkpoint] [--json] [--patch]\n  ${CLI_NAME} attest --prompt "…" [contract options]\n  ${CLI_NAME} verify [checkpoint] [--json]\n  ${CLI_NAME} contract-delta [checkpoint] [--json]\n  ${CLI_NAME} review [checkpoint] --accept-effect|--reject-effect|--needs-follow-up\n  ${CLI_NAME} capsule [checkpoint] [options]\n  ${CLI_NAME} replay [--json]\n  ${CLI_NAME} session [new] [--name "…"] [--json]\n  ${CLI_NAME} report [checkpoint] [--open]\n  ${CLI_NAME} restore [checkpoint] [--apply] [--json]\n\nChange Contract options:\n  --allow <glob,...>             Paths the change may touch\n  --deny <glob,...>              Paths the change must not touch\n  --protect-surface <names,...>  Sensitive deterministic repository surfaces\n  --max-files <n>                Maximum changed files\n  --max-lines <n>                Maximum inserted + deleted lines\n  --max-modules <n>              Maximum touched modules\n\nTrust boundary:\n  Intent is context, not permission. Historical review is not future authority.\n  A full local report is not automatically safe to disclose.\n\nOptions:\n  -h, --help       Show this help\n  -v, --version    Show the PatchOath version`;
+const HELP = `${BRAND_NAME} ${VERSION} — ${TAGLINE}\n\nUsage:\n  ${CLI_NAME} init\n  ${CLI_NAME} doctor [--json]\n  ${CLI_NAME} checkpoint --prompt "Change the primary button color" [contract options]\n  ${CLI_NAME} checkpoint --finish\n  ${CLI_NAME} diff [checkpoint] [--json] [--patch]\n  ${CLI_NAME} attest --prompt "…" [contract options]\n  ${CLI_NAME} verify [checkpoint] [--json]\n  ${CLI_NAME} contract-delta [checkpoint] [--json]\n  ${CLI_NAME} review [checkpoint] --accept-effect|--reject-effect|--needs-follow-up\n  ${CLI_NAME} capsule [checkpoint] [options]\n  ${CLI_NAME} replay [--json]\n  ${CLI_NAME} session [new] [--name "…"] [--json]\n  ${CLI_NAME} report [checkpoint] [--open]\n  ${CLI_NAME} restore [checkpoint] [--apply] [--json]\n\nChange Contract options:\n  --allow <glob,...>             Paths the change may touch\n  --deny <glob,...>              Paths the change must not touch\n  --protect-surface <names,...>  Sensitive deterministic repository surfaces\n  --max-files <n>                Maximum changed files\n  --max-lines <n>                Maximum inserted + deleted lines\n  --max-modules <n>              Maximum touched modules\n\nTrust boundary:\n  Intent is context, not permission. Historical review is not future authority.\n  A full local report is not automatically safe to disclose.\n  "${CLI_NAME} doctor" is read-only and audits the local evidence trust graph.\n\nOptions:\n  -h, --help       Show this help\n  -v, --version    Show the PatchOath version`;
 
 function contractArguments(argv) {
   const supported = new Set([
@@ -87,6 +87,10 @@ async function dispatch(topLevel, io) {
   }
   if (topLevel.length === 1 && topLevel[0] === "init") {
     return runInit(io.stdout);
+  }
+  if (topLevel[0] === "doctor") {
+    const { runDoctor } = await import("../src/doctor.mjs");
+    return runDoctor(topLevel.slice(1), io);
   }
   if (topLevel[0] === "attest") {
     const { runAttest } = await import("../src/attest.mjs");
