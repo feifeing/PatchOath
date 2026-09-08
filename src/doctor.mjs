@@ -1,11 +1,16 @@
-import { lstat } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   LEGACY_STORE_DIRECTORY_NAME,
   STORE_DIRECTORY_NAME,
   checkpointRefCandidates,
 } from "./core/brand.mjs";
+import { verifyDisclosureCapsule } from "./core/disclosure.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
+import { verifyHistoricalEffectReview } from "./core/review-record.mjs";
+import { listHistoricalEffectReviews } from "./core/review-store.mjs";
+import { readFileSafe } from "./core/safe-file.mjs";
+import { validCheckpointId } from "./core/schema.mjs";
 import {
   inspectStore,
   listCheckpoints,
@@ -17,9 +22,10 @@ import {
   runGit,
 } from "./git/git.mjs";
 
-const HELP = `patchoath doctor [--json]\n\nAudit the local PatchOath trust graph without mutating repository evidence.\nChecks the evidence store, config/state/session/checkpoint relationships, Evidence Receipts, and Git snapshot refs.\n\nExit codes:\n  0  Audit completed with no failed integrity checks\n  1  Command/runtime error\n  2  Audit completed and found broken evidence invariants\n\nOptions:\n  --json     Emit machine-readable diagnostics\n  -h, --help Show help`;
+const HELP = `patchoath doctor [--json]\n\nAudit the local PatchOath trust graph without mutating repository evidence.\nChecks the evidence store, config/state/session/checkpoint relationships, Evidence Receipts, Git snapshot refs, Historical Effect Reviews, and managed Evidence Capsules.\n\nExit codes:\n  0  Audit completed with no failed integrity checks\n  1  Command/runtime error\n  2  Audit completed and found broken evidence invariants\n\nOptions:\n  --json     Emit machine-readable diagnostics\n  -h, --help Show help`;
 
 const STATUS_ORDER = { pass: 0, warn: 1, fail: 2 };
+const CAPSULE_SUFFIX = ".capsule.json";
 
 function parse(argv) {
   const options = new Set();
@@ -190,7 +196,10 @@ function inspectTrustGraph(store, sessions, checkpoints, checks) {
           `active checkpoint ${activeId} has status ${active.status}, not recording`,
         );
       }
-      if (active.id.startsWith("po_") && active.sessionId !== store.config.currentSessionId) {
+      if (
+        active.id.startsWith("po_") &&
+        active.sessionId !== store.config.currentSessionId
+      ) {
         graphIssues.push(
           `active checkpoint ${activeId} belongs to ${active.sessionId}, not current session ${store.config.currentSessionId}`,
         );
@@ -294,6 +303,156 @@ function inspectGitSnapshots(root, checkpoints, checks) {
       ),
     );
   }
+}
+
+async function inspectReviews(root, checkpoints, checks) {
+  let reviews;
+  try {
+    reviews = await listHistoricalEffectReviews(root);
+  } catch (error) {
+    checks.push(
+      diagnostic(
+        "reviews.integrity",
+        "fail",
+        "Historical Effect Review evidence cannot be enumerated safely.",
+        [error.message],
+      ),
+    );
+    return;
+  }
+
+  const checkpointById = new Map(
+    checkpoints.map((checkpoint) => [checkpoint.id, checkpoint]),
+  );
+  const failures = [];
+  for (const review of reviews) {
+    const source = checkpointById.get(review.checkpointId);
+    const result = verifyHistoricalEffectReview(review, source);
+    if (!result.valid) {
+      failures.push(`${review.recordId || "<missing-id>"}: ${result.reason}`);
+    }
+  }
+
+  checks.push(
+    failures.length === 0
+      ? diagnostic(
+          "reviews.integrity",
+          "pass",
+          `${reviews.length} Historical Effect Review record(s) remain bound to their source receipts.`,
+        )
+      : diagnostic(
+          "reviews.integrity",
+          "fail",
+          `${failures.length} Historical Effect Review binding failure(s) detected.`,
+          failures,
+        ),
+  );
+}
+
+async function inspectManagedCapsules(store, checkpoints, checks) {
+  const directory = store.paths.capsules;
+  const existing = await lstatIfPresent(directory);
+  if (!existing) {
+    checks.push(
+      diagnostic(
+        "capsules.integrity",
+        "pass",
+        "No managed Evidence Capsules have been created yet.",
+      ),
+    );
+    return;
+  }
+  if (existing.isSymbolicLink() || !existing.isDirectory()) {
+    checks.push(
+      diagnostic(
+        "capsules.integrity",
+        "fail",
+        "Managed capsule storage must be a physical directory inside the evidence store.",
+      ),
+    );
+    return;
+  }
+
+  const checkpointById = new Map(
+    checkpoints.map((checkpoint) => [checkpoint.id, checkpoint]),
+  );
+  const failures = [];
+  const ignored = [];
+  let verified = 0;
+  for (const name of await readdir(directory)) {
+    if (!name.endsWith(CAPSULE_SUFFIX)) {
+      ignored.push(name);
+      continue;
+    }
+    const expectedCheckpointId = name.slice(0, -CAPSULE_SUFFIX.length);
+    if (!validCheckpointId(expectedCheckpointId)) {
+      ignored.push(name);
+      continue;
+    }
+
+    try {
+      const capsule = JSON.parse(
+        await readFileSafe(
+          join(directory, name),
+          "utf8",
+          "Managed Evidence Capsule file",
+        ),
+      );
+      if (capsule.source?.checkpointId !== expectedCheckpointId) {
+        failures.push(
+          `${name}: storage identity does not match source checkpoint ${String(capsule.source?.checkpointId || "<missing>")}`,
+        );
+        continue;
+      }
+      const source = checkpointById.get(expectedCheckpointId);
+      if (!source) {
+        failures.push(`${name}: source checkpoint is missing`);
+        continue;
+      }
+      if (capsule.source?.evidenceReceiptId !== source.receipt?.receiptId) {
+        failures.push(`${name}: source Evidence Receipt link does not match checkpoint`);
+        continue;
+      }
+      const result = verifyDisclosureCapsule(capsule);
+      if (!result.valid) {
+        failures.push(`${name}: ${result.reason}`);
+        continue;
+      }
+      verified += 1;
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    checks.push(
+      diagnostic(
+        "capsules.integrity",
+        "fail",
+        `${failures.length} managed Evidence Capsule integrity failure(s) detected.`,
+        failures,
+      ),
+    );
+    return;
+  }
+  if (ignored.length > 0) {
+    checks.push(
+      diagnostic(
+        "capsules.integrity",
+        "warn",
+        `${verified} managed capsule(s) verified; ${ignored.length} unrecognized file(s) were left untouched.`,
+        ignored,
+      ),
+    );
+    return;
+  }
+  checks.push(
+    diagnostic(
+      "capsules.integrity",
+      "pass",
+      `${verified} managed Evidence Capsule(s) verify and retain their source receipt links.`,
+    ),
+  );
 }
 
 export async function diagnoseRepository(root) {
@@ -406,6 +565,8 @@ export async function diagnoseRepository(root) {
     inspectTrustGraph(store, sessions, checkpoints, checks);
     inspectReceipts(checkpoints, checks);
     inspectGitSnapshots(root, checkpoints, checks);
+    await inspectReviews(root, checkpoints, checks);
+    await inspectManagedCapsules(store, checkpoints, checks);
   }
 
   const summary = summarize(checks);
@@ -432,7 +593,9 @@ function writeHuman(result, stdout) {
     `repository ${result.repository.branch} @ ${result.repository.head.slice(0, 12)}\n`,
   );
   for (const check of result.checks) {
-    stdout.write(`${check.status.toUpperCase().padEnd(4)} ${check.id} · ${check.message}\n`);
+    stdout.write(
+      `${check.status.toUpperCase().padEnd(4)} ${check.id} · ${check.message}\n`,
+    );
     for (const detail of check.details || []) {
       stdout.write(`     - ${detail}\n`);
     }
