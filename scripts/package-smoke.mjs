@@ -129,7 +129,9 @@ try {
   run(git, ["add", "app.js"], { cwd: project });
   run(git, ["commit", "-m", "initial"], { cwd: project });
 
-  const beforeInitDoctor = JSON.parse(runCli(cli, project, ["doctor", "--json"]));
+  const beforeInitDoctor = JSON.parse(
+    runCli(cli, project, ["doctor", "--json"]),
+  );
   assert.equal(beforeInitDoctor.healthy, true);
   assert.equal(beforeInitDoctor.store.exists, false);
 
@@ -163,7 +165,11 @@ try {
   );
 
   const doctor = JSON.parse(runCli(cli, project, ["doctor", "--json"]));
-  assert.equal(doctor.healthy, true, "packed CLI doctor should report healthy evidence");
+  assert.equal(
+    doctor.healthy,
+    true,
+    "packed CLI doctor should report healthy evidence",
+  );
   assert.equal(doctor.summary.fail, 0);
   assert.equal(
     doctor.checks.find((item) => item.id === "receipts.integrity")?.status,
