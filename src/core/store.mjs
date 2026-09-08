@@ -46,6 +46,15 @@ function assertSessionId(id) {
   return assertPrefixedStorageId(id, SESSION_PREFIXES, "session ID");
 }
 
+function assertStoredIdentity(kind, expectedId, actualId) {
+  if (expectedId === actualId) return actualId;
+  const error = new Error(
+    `${kind} storage identity mismatch: expected ${expectedId}, found ${String(actualId || "<missing>")}.`,
+  );
+  error.code = "PATCHOATH_EVIDENCE_IDENTITY_MISMATCH";
+  throw error;
+}
+
 function selectedStoreDirectory(root) {
   const preferred = join(root, STORE_DIRECTORY_NAME);
   const legacy = join(root, LEGACY_STORE_DIRECTORY_NAME);
@@ -234,6 +243,38 @@ export async function initializeStore(root) {
   return { paths, config, created, legacyStore: paths.legacy };
 }
 
+export async function inspectStore(root) {
+  const boundary = await ensureStoreBoundary(root, { create: false });
+  if (!boundary.exists) {
+    return {
+      exists: false,
+      paths: boundary.paths,
+      config: null,
+      state: null,
+      legacyStore: boundary.paths.legacy,
+    };
+  }
+  const config = await readJson(
+    boundary.paths.config,
+    null,
+    "Evidence config file",
+  );
+  const state = await readJson(
+    boundary.paths.state,
+    null,
+    "Evidence state file",
+  );
+  if (!config) throw new Error("Evidence config file was not found.");
+  if (!state) throw new Error("Evidence state file was not found.");
+  return {
+    exists: true,
+    paths: boundary.paths,
+    config: assertValidConfig(config),
+    state: assertValidState(state),
+    legacyStore: boundary.paths.legacy,
+  };
+}
+
 export async function loadStore(root) {
   const initialized = await initializeStore(root);
   const state = assertValidState(
@@ -280,7 +321,40 @@ export async function loadSession(root, id) {
     "Session evidence file",
   );
   if (!session) throw new Error(`Session ${id} was not found.`);
-  return assertValidSession(session);
+  const validated = assertValidSession(session);
+  assertStoredIdentity("Session", id, validated.id);
+  return validated;
+}
+
+export async function listSessions(root) {
+  const { paths } = await ensureStoreBoundary(root, { create: false });
+  let names = [];
+  try {
+    names = (await readdir(paths.sessions)).filter((name) =>
+      Boolean(storageIdFromJsonFilename(name, SESSION_PREFIXES)),
+    );
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  const sessions = await Promise.all(
+    names.map(async (name) => {
+      const id = storageIdFromJsonFilename(name, SESSION_PREFIXES);
+      const stored = await readJson(
+        join(paths.sessions, name),
+        null,
+        "Session evidence file",
+      );
+      if (!stored) return null;
+      const validated = assertValidSession(stored);
+      assertStoredIdentity("Session", id, validated.id);
+      return validated;
+    }),
+  );
+  return sessions
+    .filter(Boolean)
+    .sort((left, right) =>
+      String(right.createdAt).localeCompare(String(left.createdAt)),
+    );
 }
 
 export async function saveCheckpoint(root, checkpoint) {
@@ -323,6 +397,7 @@ export async function loadCheckpoint(root, id) {
   );
   if (!checkpoint) throw new Error(`Checkpoint ${id} was not found.`);
   const validated = assertValidCheckpoint(checkpoint);
+  assertStoredIdentity("Checkpoint", id, validated.id);
   setRuntimeChangeContract(validated.authorization || null);
   return validated;
 }
@@ -344,13 +419,21 @@ export async function listCheckpoints(root) {
     if (error.code !== "ENOENT") throw error;
   }
   const checkpoints = await Promise.all(
-    names.map((name) =>
-      readJson(join(paths.checkpoints, name), null, "Checkpoint evidence file"),
-    ),
+    names.map(async (name) => {
+      const id = storageIdFromJsonFilename(name, CHECKPOINT_PREFIXES);
+      const stored = await readJson(
+        join(paths.checkpoints, name),
+        null,
+        "Checkpoint evidence file",
+      );
+      if (!stored) return null;
+      const validated = assertValidCheckpoint(stored);
+      assertStoredIdentity("Checkpoint", id, validated.id);
+      return validated;
+    }),
   );
   return checkpoints
     .filter(Boolean)
-    .map((checkpoint) => assertValidCheckpoint(checkpoint))
     .sort((left, right) =>
       String(right.createdAt).localeCompare(String(left.createdAt)),
     );
@@ -365,6 +448,7 @@ export async function appendCheckpointToSession(root, sessionId, checkpointId) {
   const session = assertValidSession(
     stored || initialSession(sessionId, new Date().toISOString()),
   );
+  assertStoredIdentity("Session", sessionId, session.id);
   if (!session.checkpoints.includes(checkpointId)) {
     session.checkpoints.push(checkpointId);
   }
@@ -385,6 +469,7 @@ export async function removeCheckpointFromSession(
   const stored = await readJson(sessionPath, null, "Session evidence file");
   if (!stored) return;
   const session = assertValidSession(stored);
+  assertStoredIdentity("Session", sessionId, session.id);
   session.checkpoints = session.checkpoints.filter((id) => id !== checkpointId);
   session.updatedAt = new Date().toISOString();
   assertValidSession(session);
