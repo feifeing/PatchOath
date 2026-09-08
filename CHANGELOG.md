@@ -12,6 +12,15 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 - Apply the same boundary to managed historical-review and default capsule directories while leaving explicit capsule `--out` exports user-controlled.
 - Validate per-checkpoint visual artifact directories so a nested `artifacts/<checkpoint-id>` symlink cannot redirect screenshot or diff writes.
 - Preserve physical legacy `.vibetrace/` stores for migration compatibility.
+- Bind managed checkpoint, session, and Historical Effect Review file names to the identities stored inside those records so one valid object cannot masquerade as another storage key.
+
+### Trust graph diagnostics
+
+- Add read-only `patchoath doctor` and `patchoath doctor --json` repository-wide integrity audits.
+- Audit selected-store safety, config/state/session/checkpoint schemas, session/checkpoint/active-state relationships, deterministic Evidence Receipts, Git snapshot object/ref bindings, Historical Effect Review source bindings, and managed Evidence Capsule disclosure/source bindings.
+- Keep diagnostics non-mutating: an uninitialized repository is reported without creating `.patchoath/`, and broken evidence is never silently rewritten or repaired.
+- Use exit status `2` when the audit completes but deterministic evidence invariants are broken, while warnings such as an uninitialized repository remain script-friendly and do not imply corruption.
+- Exercise the doctor from the installed npm package in both Ubuntu and Windows packaged-CLI smoke tests.
 
 ## 0.3.0 — 2026-09
 
