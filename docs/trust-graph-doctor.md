@@ -56,11 +56,11 @@ summary 8 pass · 0 warn · 0 fail
 
 ## Exit codes
 
-| Code | Meaning |
-| ---: | --- |
-| `0` | Audit completed and no integrity check failed. Warnings may still be present. |
-| `1` | The command itself could not complete, for example because it was run outside a Git repository. |
-| `2` | The audit completed and found one or more broken evidence invariants. |
+| Code | Meaning                                                                                         |
+| ---: | ----------------------------------------------------------------------------------------------- |
+|  `0` | Audit completed and no integrity check failed. Warnings may still be present.                   |
+|  `1` | The command itself could not complete, for example because it was run outside a Git repository. |
+|  `2` | The audit completed and found one or more broken evidence invariants.                           |
 
 This makes `patchoath doctor --json` usable in local scripts or pre-release checks without treating a normal “not initialized yet” state as corruption.
 
