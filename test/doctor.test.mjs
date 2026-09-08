@@ -4,15 +4,19 @@ import { access, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import test from "node:test";
-import { runDoctor } from "../src/doctor.mjs";
+import { createDisclosureCapsule } from "../src/core/disclosure.mjs";
+import { createHistoricalEffectReview } from "../src/core/review-record.mjs";
+import { saveHistoricalEffectReview } from "../src/core/review-store.mjs";
 import {
   appendCheckpointToSession,
   initializeStore,
   loadCheckpoint,
+  prepareDefaultCapsuleDirectory,
   saveCheckpoint,
   saveState,
   storePaths,
 } from "../src/core/store.mjs";
+import { runDoctor } from "../src/doctor.mjs";
 import { createRepository, git, memoryStream } from "../test-support/helpers.mjs";
 
 const cli = fileURLToPath(new URL("../bin/patchoath.mjs", import.meta.url));
@@ -85,6 +89,14 @@ function check(result, id) {
   return result.checks.find((candidate) => candidate.id === id);
 }
 
+async function persistCompletedCheckpoint(root, id = "po_doctor_completed") {
+  const { config } = await initializeStore(root);
+  const checkpoint = completedCheckpoint(root, config.currentSessionId, id);
+  await saveCheckpoint(root, checkpoint);
+  await appendCheckpointToSession(root, config.currentSessionId, checkpoint.id);
+  return checkpoint;
+}
+
 test("doctor is read-only before PatchOath initialization", async () => {
   const root = await createRepository();
   try {
@@ -116,6 +128,42 @@ test("doctor reports a healthy initialized trust graph", async () => {
     assert.equal(result.summary.fail, 0);
     assert.equal(check(result, "trust.graph").status, "pass");
     assert.equal(check(result, "git.snapshots").status, "pass");
+    assert.equal(check(result, "reviews.integrity").status, "pass");
+    assert.equal(check(result, "capsules.integrity").status, "pass");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("doctor verifies managed review and disclosure evidence end to end", async () => {
+  const root = await createRepository();
+  try {
+    const checkpoint = await persistCompletedCheckpoint(
+      root,
+      "po_doctor_full_graph",
+    );
+    const review = createHistoricalEffectReview({
+      checkpoint,
+      disposition: "accept-effect",
+      recordedAt: "2026-09-08T00:02:00.000Z",
+      reviewerLabel: "Doctor fixture",
+    });
+    await saveHistoricalEffectReview(root, review);
+
+    const capsule = createDisclosureCapsule(checkpoint);
+    const capsuleDirectory = await prepareDefaultCapsuleDirectory(root);
+    await writeFile(
+      join(capsuleDirectory, `${checkpoint.id}.capsule.json`),
+      `${JSON.stringify(capsule, null, 2)}\n`,
+      "utf8",
+    );
+
+    const { exitCode, result } = await doctorJson(root);
+    assert.equal(exitCode, 0);
+    assert.equal(result.healthy, true);
+    assert.equal(check(result, "receipts.integrity").status, "pass");
+    assert.equal(check(result, "reviews.integrity").status, "pass");
+    assert.equal(check(result, "capsules.integrity").status, "pass");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -198,11 +246,7 @@ test("doctor detects a modern checkpoint missing from its session index", async 
 test("doctor recomputes completed Evidence Receipts instead of trusting stored IDs", async () => {
   const root = await createRepository();
   try {
-    const { config } = await initializeStore(root);
-    const checkpoint = completedCheckpoint(root, config.currentSessionId);
-    await saveCheckpoint(root, checkpoint);
-    await appendCheckpointToSession(root, config.currentSessionId, checkpoint.id);
-
+    const checkpoint = await persistCompletedCheckpoint(root);
     const paths = storePaths(root);
     const checkpointPath = join(paths.checkpoints, `${checkpoint.id}.json`);
     const stored = JSON.parse(await readFile(checkpointPath, "utf8"));
@@ -245,6 +289,65 @@ test("doctor detects missing Git refs even when checkpoint JSON remains intact",
       check(result, "git.snapshots").details.some((detail) =>
         detail.includes("no PatchOath compatibility ref exists"),
       ),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("doctor refuses a review file whose storage key disagrees with recordId", async () => {
+  const root = await createRepository();
+  try {
+    const checkpoint = await persistCompletedCheckpoint(
+      root,
+      "po_doctor_review_identity",
+    );
+    const review = createHistoricalEffectReview({
+      checkpoint,
+      disposition: "needs-follow-up",
+      recordedAt: "2026-09-08T00:03:00.000Z",
+    });
+    const path = await saveHistoricalEffectReview(root, review);
+    const paths = storePaths(root);
+    await writeFile(
+      join(paths.reviews, "por_doctor_alias.json"),
+      await readFile(path, "utf8"),
+      "utf8",
+    );
+
+    const { exitCode, result } = await doctorJson(root);
+    assert.equal(exitCode, 2);
+    assert.equal(check(result, "reviews.integrity").status, "fail");
+    assert.match(
+      check(result, "reviews.integrity").details[0],
+      /storage identity mismatch/iu,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("doctor binds managed capsule filenames to their source checkpoint", async () => {
+  const root = await createRepository();
+  try {
+    const checkpoint = await persistCompletedCheckpoint(
+      root,
+      "po_doctor_capsule_identity",
+    );
+    const capsule = createDisclosureCapsule(checkpoint);
+    const capsuleDirectory = await prepareDefaultCapsuleDirectory(root);
+    await writeFile(
+      join(capsuleDirectory, "po_doctor_wrong.capsule.json"),
+      `${JSON.stringify(capsule, null, 2)}\n`,
+      "utf8",
+    );
+
+    const { exitCode, result } = await doctorJson(root);
+    assert.equal(exitCode, 2);
+    assert.equal(check(result, "capsules.integrity").status, "fail");
+    assert.match(
+      check(result, "capsules.integrity").details[0],
+      /storage identity does not match source checkpoint/iu,
     );
   } finally {
     await rm(root, { recursive: true, force: true });
