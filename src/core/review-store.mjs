@@ -28,6 +28,15 @@ async function prepareHistoricalReviewDirectory(root, create) {
   return { exists: result.exists, directory: boundary.paths.reviews };
 }
 
+function assertReviewStorageIdentity(expectedId, record) {
+  if (record?.recordId === expectedId) return record;
+  const error = new Error(
+    `Historical review storage identity mismatch: expected ${expectedId}, found ${String(record?.recordId || "<missing>")}.`,
+  );
+  error.code = "PATCHOATH_EVIDENCE_IDENTITY_MISMATCH";
+  throw error;
+}
+
 export async function saveHistoricalEffectReview(root, record) {
   assertPrefixedStorageId(
     record?.recordId,
@@ -57,15 +66,17 @@ export async function listHistoricalEffectReviews(root) {
   }
 
   const records = await Promise.all(
-    names.map(async (name) =>
-      JSON.parse(
+    names.map(async (name) => {
+      const expectedId = storageIdFromJsonFilename(name, REVIEW_PREFIXES);
+      const record = JSON.parse(
         await readFileSafe(
           join(directory, name),
           "utf8",
           "Historical review evidence file",
         ),
-      ),
-    ),
+      );
+      return assertReviewStorageIdentity(expectedId, record);
+    }),
   );
   return records.sort((left, right) =>
     String(right.recordedAt).localeCompare(String(left.recordedAt)),
