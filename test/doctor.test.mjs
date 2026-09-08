@@ -17,7 +17,11 @@ import {
   storePaths,
 } from "../src/core/store.mjs";
 import { runDoctor } from "../src/doctor.mjs";
-import { createRepository, git, memoryStream } from "../test-support/helpers.mjs";
+import {
+  createRepository,
+  git,
+  memoryStream,
+} from "../test-support/helpers.mjs";
 
 const cli = fileURLToPath(new URL("../bin/patchoath.mjs", import.meta.url));
 
@@ -116,7 +120,11 @@ test("doctor reports a healthy initialized trust graph", async () => {
     const { config } = await initializeStore(root);
     const checkpoint = recordingCheckpoint(root, config.currentSessionId);
     await saveCheckpoint(root, checkpoint);
-    await appendCheckpointToSession(root, config.currentSessionId, checkpoint.id);
+    await appendCheckpointToSession(
+      root,
+      config.currentSessionId,
+      checkpoint.id,
+    );
     await saveState(root, {
       schemaVersion: 1,
       activeCheckpointId: checkpoint.id,
@@ -279,7 +287,11 @@ test("doctor detects missing Git refs even when checkpoint JSON remains intact",
       "po_doctor_missing_ref",
     );
     await saveCheckpoint(root, checkpoint);
-    await appendCheckpointToSession(root, config.currentSessionId, checkpoint.id);
+    await appendCheckpointToSession(
+      root,
+      config.currentSessionId,
+      checkpoint.id,
+    );
     git(root, ["update-ref", "-d", checkpoint.before.ref]);
 
     const { exitCode, result } = await doctorJson(root);
