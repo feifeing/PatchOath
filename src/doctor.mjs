@@ -11,16 +11,8 @@ import { verifyHistoricalEffectReview } from "./core/review-record.mjs";
 import { listHistoricalEffectReviews } from "./core/review-store.mjs";
 import { readFileSafe } from "./core/safe-file.mjs";
 import { validCheckpointId } from "./core/schema.mjs";
-import {
-  inspectStore,
-  listCheckpoints,
-  listSessions,
-} from "./core/store.mjs";
-import {
-  findRepositoryRoot,
-  repositoryMetadata,
-  runGit,
-} from "./git/git.mjs";
+import { inspectStore, listCheckpoints, listSessions } from "./core/store.mjs";
+import { findRepositoryRoot, repositoryMetadata, runGit } from "./git/git.mjs";
 
 const HELP = `patchoath doctor [--json]\n\nAudit the local PatchOath trust graph without mutating repository evidence.\nChecks the evidence store, config/state/session/checkpoint relationships, Evidence Receipts, Git snapshot refs, Historical Effect Reviews, and managed Evidence Capsules.\n\nExit codes:\n  0  Audit completed with no failed integrity checks\n  1  Command/runtime error\n  2  Audit completed and found broken evidence invariants\n\nOptions:\n  --json     Emit machine-readable diagnostics\n  -h, --help Show help`;
 
@@ -66,7 +58,8 @@ function summarize(checks) {
 function strongestStatus(checks) {
   let status = "pass";
   for (const check of checks) {
-    if (STATUS_ORDER[check.status] > STATUS_ORDER[status]) status = check.status;
+    if (STATUS_ORDER[check.status] > STATUS_ORDER[status])
+      status = check.status;
   }
   return status;
 }
@@ -140,7 +133,9 @@ function inspectTrustGraph(store, sessions, checkpoints, checks) {
 
   const currentSession = sessionById.get(store.config.currentSessionId);
   if (!currentSession) {
-    graphIssues.push(`current session ${store.config.currentSessionId} is missing`);
+    graphIssues.push(
+      `current session ${store.config.currentSessionId} is missing`,
+    );
   }
 
   for (const session of sessions) {
@@ -410,7 +405,9 @@ async function inspectManagedCapsules(store, checkpoints, checks) {
         continue;
       }
       if (capsule.source?.evidenceReceiptId !== source.receipt?.receiptId) {
-        failures.push(`${name}: source Evidence Receipt link does not match checkpoint`);
+        failures.push(
+          `${name}: source Evidence Receipt link does not match checkpoint`,
+        );
         continue;
       }
       const result = verifyDisclosureCapsule(capsule);
