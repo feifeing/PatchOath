@@ -6,6 +6,7 @@ import {
   checkpointRefCandidates,
 } from "./core/brand.mjs";
 import { verifyDisclosureCapsule } from "./core/disclosure.mjs";
+import { createDoctorRepairPlan } from "./core/doctor-plan.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import { verifyHistoricalEffectReview } from "./core/review-record.mjs";
 import { listHistoricalEffectReviews } from "./core/review-store.mjs";
@@ -14,7 +15,7 @@ import { validCheckpointId } from "./core/schema.mjs";
 import { inspectStore, listCheckpoints, listSessions } from "./core/store.mjs";
 import { findRepositoryRoot, repositoryMetadata, runGit } from "./git/git.mjs";
 
-const HELP = `patchoath doctor [--json]\n\nAudit the local PatchOath trust graph without mutating repository evidence.\nChecks the evidence store, config/state/session/checkpoint relationships, Evidence Receipts, Git snapshot refs, Historical Effect Reviews, and managed Evidence Capsules.\n\nExit codes:\n  0  Audit completed with no failed integrity checks\n  1  Command/runtime error\n  2  Audit completed and found broken evidence invariants\n\nOptions:\n  --json     Emit machine-readable diagnostics\n  -h, --help Show help`;
+const HELP = `patchoath doctor [--plan] [--json]\n\nAudit the local PatchOath trust graph without mutating repository evidence.\nChecks the evidence store, config/state/session/checkpoint relationships, Evidence Receipts, Git snapshot refs, Historical Effect Reviews, and managed Evidence Capsules.\n\nExit codes:\n  0  Audit completed with no failed integrity checks\n  1  Command/runtime error\n  2  Audit completed and found broken evidence invariants\n\nOptions:\n  --plan     Add a deterministic proposal-only recovery plan; never applies mutations\n  --json     Emit machine-readable diagnostics\n  -h, --help Show help`;
 
 const STATUS_ORDER = { pass: 0, warn: 1, fail: 2 };
 const CAPSULE_SUFFIX = ".capsule.json";
@@ -22,7 +23,7 @@ const CAPSULE_SUFFIX = ".capsule.json";
 function parse(argv) {
   const options = new Set();
   for (const token of argv) {
-    if (["--json", "--help", "-h"].includes(token)) {
+    if (["--plan", "--json", "--help", "-h"].includes(token)) {
       options.add(token);
       continue;
     }
@@ -584,7 +585,28 @@ export async function diagnoseRepository(root) {
   };
 }
 
-function writeHuman(result, stdout) {
+function writeRepairPlan(plan, stdout) {
+  stdout.write("repair proposal · proposal-only · no mutations applied\n");
+  stdout.write(`digest ${plan.proposalDigest}\n`);
+  if (plan.items.length === 0) {
+    stdout.write("PLAN no repair action is currently proposed\n");
+    return;
+  }
+  for (const item of plan.items) {
+    const authority = item.explicitAuthorityRequired
+      ? "explicit mutation authority required"
+      : "no repair mutation proposed";
+    stdout.write(
+      `PLAN ${item.checkId} · ${item.category} · ${item.operation} · ${authority}\n`,
+    );
+    stdout.write(`     ${item.summary}\n`);
+    for (const prerequisite of item.prerequisites) {
+      stdout.write(`     - ${prerequisite}\n`);
+    }
+  }
+}
+
+function writeHuman(result, stdout, repairPlan = null) {
   stdout.write(`PatchOath doctor · ${result.repository.name}\n`);
   stdout.write(
     `repository ${result.repository.branch} @ ${result.repository.head.slice(0, 12)}\n`,
@@ -600,6 +622,7 @@ function writeHuman(result, stdout) {
   stdout.write(
     `summary ${result.summary.pass} pass · ${result.summary.warn} warn · ${result.summary.fail} fail\n`,
   );
+  if (repairPlan) writeRepairPlan(repairPlan, stdout);
 }
 
 export async function runDoctor(argv = process.argv.slice(3), io = {}) {
@@ -620,10 +643,14 @@ export async function runDoctor(argv = process.argv.slice(3), io = {}) {
   try {
     const root = findRepositoryRoot(io.cwd || process.cwd());
     const result = await diagnoseRepository(root);
+    const repairPlan = parsed.options.has("--plan")
+      ? createDoctorRepairPlan(result)
+      : null;
     if (parsed.options.has("--json")) {
-      stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      const output = repairPlan ? { ...result, repairPlan } : result;
+      stdout.write(`${JSON.stringify(output, null, 2)}\n`);
     } else {
-      writeHuman(result, stdout);
+      writeHuman(result, stdout, repairPlan);
     }
     return result.healthy ? 0 : 2;
   } catch (error) {
