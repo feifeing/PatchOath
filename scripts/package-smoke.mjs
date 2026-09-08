@@ -60,6 +60,7 @@ try {
     "bin/patchoath.mjs",
     "bin/vibetrace.mjs",
     "src/cli.mjs",
+    "src/doctor.mjs",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
@@ -128,6 +129,10 @@ try {
   run(git, ["add", "app.js"], { cwd: project });
   run(git, ["commit", "-m", "initial"], { cwd: project });
 
+  const beforeInitDoctor = JSON.parse(runCli(cli, project, ["doctor", "--json"]));
+  assert.equal(beforeInitDoctor.healthy, true);
+  assert.equal(beforeInitDoctor.store.exists, false);
+
   runCli(cli, project, ["init"]);
   await readFile(join(project, ".patchoath", "config.json"), "utf8");
   runCli(cli, project, [
@@ -155,6 +160,18 @@ try {
       item.ref.startsWith("refs/patchoath/checkpoints/"),
     ),
     "new checkpoints should resolve through the PatchOath Git ref namespace",
+  );
+
+  const doctor = JSON.parse(runCli(cli, project, ["doctor", "--json"]));
+  assert.equal(doctor.healthy, true, "packed CLI doctor should report healthy evidence");
+  assert.equal(doctor.summary.fail, 0);
+  assert.equal(
+    doctor.checks.find((item) => item.id === "receipts.integrity")?.status,
+    "pass",
+  );
+  assert.equal(
+    doctor.checks.find((item) => item.id === "git.snapshots")?.status,
+    "pass",
   );
 
   const contractDelta = JSON.parse(
@@ -211,6 +228,17 @@ try {
     capsuleVerification.valid,
     true,
     "packed CLI should verify its Disclosure Receipt",
+  );
+
+  const fullDoctor = JSON.parse(runCli(cli, project, ["doctor", "--json"]));
+  assert.equal(fullDoctor.healthy, true);
+  assert.equal(
+    fullDoctor.checks.find((item) => item.id === "reviews.integrity")?.status,
+    "pass",
+  );
+  assert.equal(
+    fullDoctor.checks.find((item) => item.id === "capsules.integrity")?.status,
+    "pass",
   );
 
   const preview = runCli(cli, project, ["restore", "--json"]);
