@@ -117,7 +117,9 @@ For a before or after worktree snapshot, PatchOath:
 5. deletes the temporary index; and
 6. anchors new evidence beneath `refs/patchoath/checkpoints/<id>/…`.
 
-The repository's real index is not used for those writes. Ignored files remain ignored; tracked, staged, unstaged, deleted, renamed, and untracked non-ignored files are represented in the snapshot.
+The repository's real index is not used for those writes. Full worktree snapshots represent tracked, staged, unstaged, deleted, renamed, and untracked non-ignored files under Git's normal object rules. Scope-specific diffs still select only the requested staged or unstaged effect.
+
+`src/git/ignored.mjs` records capture eligibility and ignored-root presence using a count and SHA-256 digest of the root set. Ignored path names and contents are not stored; this diagnostic metadata is not bound into Evidence Receipt v2 and does not prove that ignored content was unchanged. The internal evidence-store roots are excluded from these diagnostics.
 
 Submodules contribute their commit pointers, not recursive file snapshots. Worktree capture refuses tracked or untracked uncommitted submodule changes because the parent snapshot cannot represent those bytes. This inspection uses the temporary index and disables optional Git locks, preserving the real index. A committed submodule pointer change remains visible even when repository Git settings request that submodules be ignored.
 
@@ -180,6 +182,14 @@ A checkpoint contains:
 - a versioned Evidence Receipt for completed checkpoints.
 
 Writes use temporary files plus atomic rename so an interrupted process does not intentionally leave half-written JSON.
+
+Managed evidence uses physical directory and file boundaries, safe reads, schema validation, and storage-key identity checks. Session, checkpoint, and review filenames must agree with their stored identities. Checkpoint continuation also checks the recorded branch and `HEAD` anchor before recording a new after-state.
+
+## Read-only trust graph audit
+
+`src/doctor.mjs` audits store selection, schemas, storage identities, session/checkpoint relationships, receipt consistency, snapshot objects and refs, historical reviews, and managed capsules. It does not initialize stores or repair evidence. `--json` writes diagnostics to standard output; exits are `0` for no failed check (warnings allowed), `1` for command/runtime errors, and `2` for broken evidence invariants.
+
+Doctor complements checkpoint verification and does not replace direct visual-artifact rehashing by `patchoath verify`. See [Trust Graph Doctor](trust-graph-doctor.md).
 
 ## Contract Delta
 

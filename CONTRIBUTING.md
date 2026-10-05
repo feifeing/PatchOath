@@ -36,14 +36,14 @@ See [`LEGAL.md`](LEGAL.md), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), 
 ## Local setup
 
 ```bash
-git clone https://github.com/feifeing/vibetrace.git
-cd vibetrace
-npm install
+git clone https://github.com/feifeing/PatchOath.git
+cd PatchOath
+npm ci
 npx playwright install chromium
 npm run verify
 ```
 
-The repository slug is temporarily retained during the v0.3 brand migration. Product-facing commands use `patchoath`.
+For an introduction to the sample dashboard and CLI workflow, see [Getting started](docs/getting-started.md). Product-facing commands use `patchoath`.
 
 Useful focused commands:
 

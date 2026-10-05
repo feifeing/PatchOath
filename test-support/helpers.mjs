@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -29,4 +29,31 @@ export function memoryStream() {
       return value;
     },
   };
+}
+
+export async function createTestSymlink(
+  context,
+  target,
+  path,
+  directory = false,
+) {
+  try {
+    await symlink(
+      target,
+      path,
+      directory && process.platform === "win32" ? "junction" : undefined,
+    );
+    return true;
+  } catch (error) {
+    if (
+      process.platform === "win32" &&
+      ["EPERM", "EACCES"].includes(error.code)
+    ) {
+      context.skip(
+        "This Windows host does not allow file symbolic links; Linux CI exercises this boundary.",
+      );
+      return false;
+    }
+    throw error;
+  }
 }

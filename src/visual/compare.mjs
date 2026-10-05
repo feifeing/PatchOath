@@ -1,5 +1,20 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { readFileSafe, writeFileAtomic } from "../core/safe-file.mjs";
+import { ensurePhysicalDirectory } from "../core/store-boundary.mjs";
+
+async function readComparisonInput(path, directory) {
+  const resolved = resolve(path);
+  const rel = relative(directory, resolved);
+  if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    throw new Error("Visual comparison input escapes its artifact directory.");
+  }
+  if (dirname(resolved) !== directory) {
+    throw new Error(
+      "Visual comparison input must be in its artifact directory.",
+    );
+  }
+  return readFileSafe(resolved, undefined, "Visual comparison input");
+}
 
 async function loadPng() {
   try {
@@ -56,8 +71,19 @@ export async function compareVisualCaptures({
   colorThreshold = 24,
 }) {
   const { PNG } = await loadPng();
-  const beforePng = PNG.sync.read(await readFile(before.image));
-  const afterPng = PNG.sync.read(await readFile(after.image));
+  const artifactDirectory = resolve(dirname(diffOutputPath));
+  await ensurePhysicalDirectory(
+    dirname(artifactDirectory),
+    artifactDirectory,
+    "Visual comparison artifact directory",
+    { create: false },
+  );
+  const beforePng = PNG.sync.read(
+    await readComparisonInput(before.image, artifactDirectory),
+  );
+  const afterPng = PNG.sync.read(
+    await readComparisonInput(after.image, artifactDirectory),
+  );
   const width = Math.max(beforePng.width, afterPng.width);
   const height = Math.max(beforePng.height, afterPng.height);
   const totalPixels = width * height;
@@ -111,8 +137,9 @@ export async function compareVisualCaptures({
     }
   }
 
-  await mkdir(dirname(diffOutputPath), { recursive: true });
-  await writeFile(diffOutputPath, PNG.sync.write(diff));
+  await writeFileAtomic(diffOutputPath, PNG.sync.write(diff), {
+    label: "Visual diff artifact file",
+  });
 
   return {
     pixel: {

@@ -1,8 +1,9 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { loadActiveCheckpointAnchor } from "../core/active-checkpoint.mjs";
 import { BRAND_NAME } from "../core/brand.mjs";
-import { runGit } from "./git.mjs";
+import { assertRepositoryAnchor, GitError, runGit } from "./git.mjs";
 
 function snapshotIdentityEnv(indexPath) {
   const env = {
@@ -13,6 +14,37 @@ function snapshotIdentityEnv(indexPath) {
   };
   if (indexPath) env.GIT_INDEX_FILE = indexPath;
   return env;
+}
+
+function assertHeadStable(root, expectedHead) {
+  const actualHead = runGit(root, ["rev-parse", "--verify", "HEAD"]).trim();
+  if (actualHead === expectedHead) return;
+  throw new GitError(
+    `Repository HEAD changed while PatchOath was capturing a Git snapshot. Expected ${expectedHead.slice(0, 12)}; current ${actualHead.slice(0, 12)}. Retry after repository history is stable.`,
+  );
+}
+
+async function captureAnchor(root) {
+  const active = await loadActiveCheckpointAnchor(root);
+  if (!active) return null;
+  assertRepositoryAnchor(
+    root,
+    active.repository,
+    `capture active checkpoint ${active.checkpointId}`,
+  );
+  return active;
+}
+
+function assertCaptureAnchor(root, active, head) {
+  if (active) {
+    assertRepositoryAnchor(
+      root,
+      active.repository,
+      `capture active checkpoint ${active.checkpointId}`,
+    );
+    return;
+  }
+  assertHeadStable(root, head);
 }
 
 function assertSubmoduleCoverage(root, env) {
@@ -54,11 +86,13 @@ export async function createWorktreeSnapshot(root, label = "working tree") {
   const env = snapshotIdentityEnv(temporaryIndex);
 
   try {
+    const active = await captureAnchor(root);
     const head = runGit(root, ["rev-parse", "HEAD"]).trim();
     runGit(root, ["read-tree", "HEAD"], { env });
     runGit(root, ["add", "-A", "--", "."], { env });
     assertSubmoduleCoverage(root, env);
     const tree = runGit(root, ["write-tree"], { env }).trim();
+    assertCaptureAnchor(root, active, head);
     const commit = runGit(
       root,
       [
@@ -71,6 +105,7 @@ export async function createWorktreeSnapshot(root, label = "working tree") {
       ],
       { env },
     ).trim();
+    assertCaptureAnchor(root, active, head);
     return { commit, tree, head };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -86,5 +121,6 @@ export function createIndexSnapshot(root, label = "staged changes") {
     ["commit-tree", tree, "-p", head, "-m", `${BRAND_NAME} snapshot: ${label}`],
     { env },
   ).trim();
+  assertHeadStable(root, head);
   return { commit, tree, head };
 }

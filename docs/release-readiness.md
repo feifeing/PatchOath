@@ -8,7 +8,8 @@ This checklist is intentionally conservative. Passing engineering CI does not by
 - [x] **PatchOath engineering collision scan completed.** Exact-name searches across public developer/software/package contexts did not surface a material same-name conflict during the v0.3 migration review. See [`brand-clearance.md`](brand-clearance.md).
 - [ ] **Formal commercial trademark clearance completed for target jurisdictions/classes.** Public searches reduce obvious collision risk but are not a legal opinion or registration clearance.
 - [x] npm package remains `private: true` during the v0.3 migration, final CI, repository-slug migration, and explicit public-release decision.
-- [ ] Repository slug, package-publication plan, release notes, and external links are migrated as one coordinated release action.
+- [x] Repository slug is `feifeing/PatchOath`; repository-controlled public links use the current slug.
+- [ ] Public-package publication plan, release notes, and external launch links are reviewed as one coordinated release action.
 
 ## Rights and provenance
 
@@ -69,7 +70,8 @@ A green baseline is evidence for the tested invariants only; it is not a securit
 
 ## Platform governance
 
-- [ ] GitHub repository slug and description are migrated from the retired working identity to PatchOath.
+- [x] GitHub repository slug is migrated to `feifeing/PatchOath`.
+- [ ] GitHub repository description and topic metadata are reviewed for the current product scope.
 - [ ] `main` requires pull requests and successful CI/status checks before merge.
 - [ ] Required checks include both Node versions, browser E2E, Ubuntu/Windows package smoke, formatting, and `rights:check` through their current workflow jobs.
 - [ ] Administrative bypass policy is reviewed deliberately rather than assumed safe because CI exists.

@@ -59,6 +59,58 @@ export function repositoryMetadata(root) {
   };
 }
 
+export function inspectRepositoryAnchor(root, expected = {}) {
+  const current = repositoryMetadata(root);
+  const expectedAnchor = {
+    branch: expected.branch || null,
+    head: expected.head || null,
+  };
+  const currentAnchor = { branch: current.branch, head: current.head };
+  const drift = [];
+
+  if (expectedAnchor.head && currentAnchor.head !== expectedAnchor.head) {
+    drift.push({
+      field: "HEAD",
+      expected: expectedAnchor.head,
+      actual: currentAnchor.head,
+    });
+  }
+  if (expectedAnchor.branch && currentAnchor.branch !== expectedAnchor.branch) {
+    drift.push({
+      field: "branch",
+      expected: expectedAnchor.branch,
+      actual: currentAnchor.branch,
+    });
+  }
+
+  return {
+    matches: drift.length === 0,
+    expected: expectedAnchor,
+    current: currentAnchor,
+    drift,
+  };
+}
+
+function anchorLabel(anchor) {
+  const branch = anchor.branch || "unknown-branch";
+  const head = anchor.head ? anchor.head.slice(0, 12) : "unknown-head";
+  return `${branch} @ ${head}`;
+}
+
+export function assertRepositoryAnchor(
+  root,
+  expected,
+  action = "continue this checkpoint",
+) {
+  const inspection = inspectRepositoryAnchor(root, expected);
+  if (inspection.matches) return inspection;
+
+  const fields = inspection.drift.map((item) => item.field).join(" and ");
+  throw new GitError(
+    `Repository ${fields} changed since the checkpoint started. PatchOath will not ${action} across repository history. Expected ${anchorLabel(inspection.expected)}; current ${anchorLabel(inspection.current)}. Return to the original repository anchor and retry, or abort the checkpoint.`,
+  );
+}
+
 function currentRefNamespace(ref) {
   const legacyPrefix = `${LEGACY_REF_NAMESPACE}/checkpoints/po_`;
   if (ref.startsWith(legacyPrefix)) {

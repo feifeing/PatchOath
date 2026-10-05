@@ -4,6 +4,68 @@ import { mkdir } from "node:fs/promises";
 const RETIRED_PRODUCT_NAME = ["Vibe", "Trace"].join("");
 const RETIRED_CLI_PREFIX = ["vibe", "trace "].join("");
 
+test("demo onboarding copies the displayed commands and labels sample evidence", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.copiedCommands = [];
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: async (text) => {
+          window.copiedCommands.push(text);
+        },
+      },
+    });
+  });
+  await page.goto("/");
+  await expect(page.locator("#sessionMode")).toContainText("SAMPLE SESSION");
+  await expect(page.locator("#demoHint")).toContainText(
+    "built-in sample evidence",
+  );
+  await page.getByRole("link", { name: "Try it on your repo" }).click();
+  await expect(page).toHaveURL(/#get-started$/u);
+  await page.getByRole("button", { name: "Copy setup", exact: true }).click();
+  await expect(page.locator("#toast")).toHaveText("Setup commands copied");
+  await page.getByRole("button", { name: "Copy command", exact: true }).click();
+  const copied = await page.evaluate(() => window.copiedCommands);
+  expect(copied).toEqual([
+    await page.locator("#setupCommand").textContent(),
+    (await page.locator("#checkpointCommand").textContent())
+      .trim()
+      .replace(/\s+/gu, " "),
+  ]);
+  expect(copied[1]).toContain('--deny "src/auth/**"');
+  await expect(page.locator(".top-actions a")).toHaveAttribute(
+    "href",
+    "https://github.com/feifeing/PatchOath",
+  );
+});
+
+test("keyboard navigation reaches checkpoint controls without animation", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("link", { name: "Skip to evidence" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#evidence-workspace$/u);
+  const smallPatch = page.getByRole("button", {
+    name: /Shorten the empty-state copy/u,
+  });
+  await smallPatch.focus();
+  await page.keyboard.press("Enter");
+  await expect(smallPatch).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#blastScore")).toHaveText("4");
+  expect(
+    await page.evaluate(
+      () => getComputedStyle(document.documentElement).scrollBehavior,
+    ),
+  ).toBe("auto");
+});
+
 test("PatchOath replays authority, review, and disclosure evidence", async ({
   page,
 }) => {
@@ -16,7 +78,7 @@ test("PatchOath replays authority, review, and disclosure evidence", async ({
   await expect(page.getByText("PatchOath", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /Declare the boundary\. Inspect the patch\. Prove what crossed it\./u,
+      name: /A small ask\. A bigger patch\. Know what crossed the line\./u,
     }),
   ).toBeVisible();
   await expect(page.locator("body")).not.toContainText(RETIRED_PRODUCT_NAME);

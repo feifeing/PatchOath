@@ -37,6 +37,11 @@ test("generated reports run directly from a local file with every review panel",
     await expect(page.locator(".authorization-section")).toBeVisible();
     await expect(page.locator(".trust-card")).toContainText("verified");
     await expect(page.locator(".historical-review-card")).toBeVisible();
+    await expect(page.locator("#sessionMode")).toHaveText(
+      "LOCAL REPORT · 1 CHECKPOINT",
+    );
+    await expect(page.locator("#get-started")).toBeHidden();
+    await expect(page.locator("#demoHint")).toBeHidden();
     expect(errors).toEqual([]);
   } finally {
     await page.goto("about:blank");
@@ -47,6 +52,26 @@ test("generated reports run directly from a local file with every review panel",
       retryDelay: 100,
     });
   }
+});
+
+test("an empty report never falls back to sample evidence", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.__PATCHOATH_REPORT__ = { mode: "report", checkpoints: [] };
+  });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await expect(page.locator("#sessionMode")).toHaveText(
+    "LOCAL REPORT · 0 CHECKPOINTS",
+  );
+  await expect(page.locator(".workspace-heading h2")).toHaveText(
+    "No captured checkpoints in this report.",
+  );
+  await expect(page.locator(".timeline-item")).toHaveCount(0);
+  await expect(page.locator("#get-started")).toBeHidden();
+  expect(errors).toEqual([]);
 });
 
 test("report metric values render as text even when stored evidence contains HTML", async ({

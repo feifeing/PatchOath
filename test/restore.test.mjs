@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { access, readFile, rm, writeFile } from "node:fs/promises";
+import { access, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRepository, git } from "../test-support/helpers.mjs";
@@ -35,6 +35,21 @@ async function makeCheckpoint(root) {
   run(root, ["checkpoint", "--finish"]);
 }
 
+async function storedCheckpoint(root) {
+  const directory = join(root, ".patchoath", "checkpoints");
+  const [name] = await readdir(directory);
+  const path = join(directory, name);
+  return { path, checkpoint: JSON.parse(await readFile(path, "utf8")) };
+}
+
+async function assertAfterWorktreeUnchanged(root) {
+  assert.equal(
+    await readFile(join(root, "app.js"), "utf8"),
+    "export const value = 2;\n",
+  );
+  await access(join(root, "generated.js"));
+}
+
 test("PatchOath restore is dry-run by default and apply restores the before worktree", async (context) => {
   const root = await createRepository();
   context.after(() => rm(root, { recursive: true, force: true }));
@@ -46,11 +61,7 @@ test("PatchOath restore is dry-run by default and apply restores the before work
   const preview = run(root, ["restore"]);
   assert.match(preview, /PatchOath guarded restore/u);
   assert.match(preview, /dry-run only/u);
-  assert.equal(
-    await readFile(join(root, "app.js"), "utf8"),
-    "export const value = 2;\n",
-  );
-  await access(join(root, "generated.js"));
+  await assertAfterWorktreeUnchanged(root);
 
   const applied = run(root, ["restore", "--apply"]);
   assert.match(applied, /HEAD and index unchanged/u);
@@ -77,4 +88,36 @@ test("PatchOath restore blocks when worktree drift appears after checkpoint comp
     await readFile(join(root, "app.js"), "utf8"),
     "export const value = 3;\n",
   );
+});
+
+test("PatchOath restore refuses checkpoint metadata whose Evidence Receipt no longer verifies", async (context) => {
+  const root = await createRepository();
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await makeCheckpoint(root);
+  const { path, checkpoint } = await storedCheckpoint(root);
+  checkpoint.prompt.text = "Tampered restore target metadata";
+  await writeFile(path, `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
+
+  const result = runResult(root, ["restore", "--apply"]);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Restore source Evidence Receipt did not verify/iu,
+  );
+  await assertAfterWorktreeUnchanged(root);
+});
+
+test("PatchOath restore refuses a checkpoint whose snapshot ref no longer matches its commit", async (context) => {
+  const root = await createRepository();
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await makeCheckpoint(root);
+  const { checkpoint } = await storedCheckpoint(root);
+  git(root, ["update-ref", checkpoint.before.ref, checkpoint.after.commit]);
+
+  const result = runResult(root, ["restore", "--apply"]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /before-git-ref-mismatch/iu);
+  await assertAfterWorktreeUnchanged(root);
 });

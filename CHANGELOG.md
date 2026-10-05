@@ -6,6 +6,14 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 
 ## Unreleased
 
+### Evidence workflow
+
+- Validate physical evidence directories, managed file types, storage schemas, and record IDs before reading or writing; publish changes through exclusive temporary files and atomic replacement.
+- Check active checkpoint HEAD/branch anchors, verify source receipts and snapshot refs before restore, and only recover mutation locks whose same-host process is demonstrably absent.
+- Add read-only `patchoath doctor` diagnostics for the evidence trust graph, including JSON output and stable diagnostic IDs.
+- Record ignored-root counts and a root-set digest without collecting ignored paths or contents; identify snapshot eligibility separately from receipt-bound capture coverage.
+- Confine visual comparison inputs and report assets to their evidence directories; validate and rebuild report output without following redirection links or reusing stale assets.
+
 - Evaluate both rename endpoints against path and protected-surface authorization; include source modules and directories in risk model v3 without changing historical receipts.
 - Keep submodule commit-pointer changes visible despite Git ignore settings; refuse parent worktree capture when submodule content cannot be represented.
 - Disable external diff drivers, text conversion, and terminal color for object-based evidence diffs.
@@ -13,6 +21,14 @@ The project is still alpha. Entries describe implemented behavior; they are not 
 - Make generated reports directly openable from local HTML files using separately scoped classic scripts; verify the complete offline review UI in Chromium.
 - Normalize Git-managed line endings in the restore regression test so Windows CRLF checkout behavior is covered correctly.
 - Keep Windows browser-test cleanup reliable by waiting for the fixture server to exit before removing its directory; enforce LF source checkouts across platforms.
+
+### Presentation and maintenance
+
+- Refresh the dashboard with a clearer scope example, explicit sample-session labels, demo/setup entry points, responsive layouts, keyboard navigation, and reduced-motion support.
+- Copy the command actually displayed, and keep demo onboarding separate from reports generated with real evidence; an empty report never displays sample checkpoints.
+- Add a concise Chinese README, a practical getting-started guide, and updated product screenshots. Bundle linked documentation with source-installed packages.
+- Use the current `feifeing/PatchOath` repository URLs and enforce them in the release gate.
+- Add weekly dependency-update configuration and high-severity dependency auditing; pin workflow actions to immutable commits.
 
 ## 0.3.0 — 2026-09
 

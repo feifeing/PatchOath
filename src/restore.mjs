@@ -1,3 +1,5 @@
+import { checkpointRefCandidates } from "./core/brand.mjs";
+import { verifyEvidenceReceipt } from "./core/receipt.mjs";
 import { listCheckpoints, loadStore } from "./core/store.mjs";
 import { findRepositoryRoot, runGit } from "./git/git.mjs";
 import { applyRestore, inspectRestore } from "./git/restore.mjs";
@@ -9,8 +11,9 @@ Usage:
   patchoath restore [checkpoint] --apply
   patchoath restore [checkpoint] --json
 
-Restore is dry-run by default. PatchOath only applies a restore when the current worktree
-still matches the checkpoint after-state exactly. If later edits are detected, restore is blocked.
+Restore is dry-run by default. PatchOath only trusts a restore source when its Evidence Receipt
+and before/after snapshot refs still verify, and only applies when the current worktree still
+matches the checkpoint after-state exactly. If later edits are detected, restore is blocked.
 The real Git index and HEAD are not rewritten.`;
 
 function parse(argv) {
@@ -45,6 +48,64 @@ async function resolveCompletedCheckpoint(root, token) {
   if (matches.length > 1)
     throw new Error(`Checkpoint prefix ${token} is ambiguous.`);
   return matches[0];
+}
+
+function trustedSnapshotRefs(checkpoint, phase) {
+  return checkpointRefCandidates(checkpoint, phase).filter(
+    (ref) =>
+      typeof ref === "string" &&
+      (ref.startsWith("refs/patchoath/") || ref.startsWith("refs/vibetrace/")),
+  );
+}
+
+function verifyRestoreSnapshot(root, checkpoint, phase) {
+  const commit = checkpoint[phase]?.commit;
+  if (!commit) {
+    return { valid: false, reason: `${phase}-commit-missing`, ref: null };
+  }
+
+  try {
+    runGit(root, ["cat-file", "-e", `${commit}^{commit}`]);
+  } catch {
+    return { valid: false, reason: `${phase}-git-object-missing`, ref: null };
+  }
+
+  let mismatchRef = null;
+  for (const ref of trustedSnapshotRefs(checkpoint, phase)) {
+    try {
+      const actual = runGit(root, ["rev-parse", "--verify", ref]).trim();
+      if (actual === commit) return { valid: true, reason: "verified", ref };
+      mismatchRef ||= ref;
+    } catch {
+      // A later canonical/legacy candidate may still be present.
+    }
+  }
+
+  return {
+    valid: false,
+    reason: mismatchRef
+      ? `${phase}-git-ref-mismatch`
+      : `${phase}-git-ref-missing`,
+    ref: mismatchRef,
+  };
+}
+
+function assertRestoreSourceIntegrity(root, checkpoint) {
+  const receipt = verifyEvidenceReceipt(checkpoint);
+  if (!receipt.valid) {
+    throw new Error(
+      `Restore source Evidence Receipt did not verify (${receipt.reason}).`,
+    );
+  }
+
+  for (const phase of ["before", "after"]) {
+    const snapshot = verifyRestoreSnapshot(root, checkpoint, phase);
+    if (!snapshot.valid) {
+      throw new Error(
+        `Restore source snapshot did not verify (${snapshot.reason}).`,
+      );
+    }
+  }
 }
 
 function fileSummary(files) {
@@ -97,6 +158,7 @@ export async function runRestore(argv, io = {}) {
   }
 
   const checkpoint = await resolveCompletedCheckpoint(root, options.checkpoint);
+  assertRestoreSourceIntegrity(root, checkpoint);
   const headBefore = runGit(root, ["rev-parse", "HEAD"]);
   const indexBefore = runGit(root, ["write-tree"]);
   const plan = await inspectRestore(root, checkpoint);
