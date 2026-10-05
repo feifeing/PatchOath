@@ -4,6 +4,16 @@ All notable user-facing changes to PatchOath are recorded here.
 
 The project is still alpha. Entries describe implemented behavior; they are not promises of semantic correctness, security, legal compliance, or future API stability.
 
+## Unreleased
+
+- Evaluate both rename endpoints against path and protected-surface authorization; include source modules and directories in risk model v3 without changing historical receipts.
+- Keep submodule commit-pointer changes visible despite Git ignore settings; refuse parent worktree capture when submodule content cannot be represented.
+- Disable external diff drivers, text conversion, and terminal color for object-based evidence diffs.
+- Render untrusted report statistics as escaped text and include the report's required `polish.css` asset.
+- Make generated reports directly openable from local HTML files using separately scoped classic scripts; verify the complete offline review UI in Chromium.
+- Normalize Git-managed line endings in the restore regression test so Windows CRLF checkout behavior is covered correctly.
+- Keep Windows browser-test cleanup reliable by waiting for the fixture server to exit before removing its directory; enforce LF source checkouts across platforms.
+
 ## 0.3.0 — 2026-09
 
 ### Product identity

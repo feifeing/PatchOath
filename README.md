@@ -211,6 +211,8 @@ refs/patchoath/checkpoints/<id>/after
 
 The real Git index, branch, and `HEAD` are not moved by checkpoint capture.
 
+Submodules are represented by their commit pointers. Commit or discard uncommitted edits inside a submodule before capturing the parent repository: PatchOath refuses content the parent Git snapshot cannot represent. Diff evidence includes committed pointer changes even when local Git settings hide submodules, and bypasses external diff/text-conversion helpers.
+
 ## Optional visual evidence
 
 With Playwright installed, a checkpoint can bind before/after page evidence:

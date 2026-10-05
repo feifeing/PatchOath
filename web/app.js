@@ -396,9 +396,9 @@ function renderTimeline() {
       return `<button class="timeline-item ${active ? "active" : ""}" data-checkpoint="${escapeHtml(checkpoint.id)}" role="listitem" type="button" aria-pressed="${active}">
       <span class="timeline-node"><i></i><b>${String(checkpoints.length - index).padStart(2, "0")}</b></span>
       <span class="timeline-content">
-        <span class="timeline-meta">${shortTime(checkpoint.createdAt)} <i>·</i> ${analysis?.summary?.filesChanged || 0} files</span>
+        <span class="timeline-meta">${shortTime(checkpoint.createdAt)} <i>·</i> ${escapeHtml(analysis?.summary?.filesChanged || 0)} files</span>
         <strong>${escapeHtml(checkpoint.prompt.text)}</strong>
-        <span class="timeline-result"><em class="${levelClass(risk.level)}">${escapeHtml(risk.level)}</em><b>blast ${analysis?.blastRadius?.score || 0}</b></span>
+        <span class="timeline-result"><em class="${levelClass(risk.level)}">${escapeHtml(risk.level)}</em><b>blast ${escapeHtml(analysis?.blastRadius?.score || 0)}</b></span>
       </span>
     </button>`;
     })
@@ -531,7 +531,7 @@ function renderVisual(checkpoint) {
   elements.visualEvidence.innerHTML = evidence
     .map(
       (item) =>
-        `<div class="evidence-stat ${item.active ? "active" : ""}"><span>${item.label}</span><strong>${item.value}</strong><small>${item.detail}</small></div>`,
+        `<div class="evidence-stat ${item.active ? "active" : ""}"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong><small>${escapeHtml(item.detail)}</small></div>`,
     )
     .join("");
 }
@@ -580,7 +580,7 @@ function renderImpact(checkpoint) {
     .slice(0, 5)
     .map(
       (factor) =>
-        `<div class="risk-factor" title="${escapeHtml(factor.detail || "")}"><div><span>${escapeHtml(factor.label)}</span><b>+${factor.points}</b></div><i><em style="width:${Math.max(7, (factor.points / maxFactor) * 100)}%"></em></i></div>`,
+        `<div class="risk-factor" title="${escapeHtml(factor.detail || "")}"><div><span>${escapeHtml(factor.label)}</span><b>+${escapeHtml(factor.points)}</b></div><i><em style="width:${Math.max(7, (factor.points / maxFactor) * 100)}%"></em></i></div>`,
     )
     .join("");
   elements.fileCount.textContent = analysis.summary.filesChanged;
@@ -594,7 +594,7 @@ function renderImpact(checkpoint) {
       const sensitive = file.signals?.some((signal) =>
         ["auth", "routing", "dependencies", "ci", "database"].includes(signal),
       );
-      return `<div class="file-row"><span class="file-signal ${levelClass(sensitive ? "high" : "low")}"></span><code>${escapeHtml(file.path)}</code><span><b>+${file.additions ?? 0}</b><i>−${file.deletions ?? 0}</i></span></div>`;
+      return `<div class="file-row"><span class="file-signal ${levelClass(sensitive ? "high" : "low")}"></span><code>${escapeHtml(file.path)}</code><span><b>+${escapeHtml(file.additions ?? 0)}</b><i>−${escapeHtml(file.deletions ?? 0)}</i></span></div>`;
     })
     .join("");
   if (remainingFiles > 0) {

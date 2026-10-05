@@ -15,6 +15,39 @@ function snapshotIdentityEnv(indexPath) {
   return env;
 }
 
+function assertSubmoduleCoverage(root, env) {
+  const entries = runGit(root, ["ls-files", "--stage", "-z"], { env });
+  if (!entries.split("\0").some((entry) => entry.startsWith("160000 "))) return;
+  const records = runGit(
+    root,
+    [
+      "--no-optional-locks",
+      "status",
+      "--porcelain=v2",
+      "-z",
+      "--untracked-files=all",
+      "--ignore-submodules=none",
+    ],
+    { env },
+  ).split("\0");
+  for (let index = 0; index < records.length; index += 1) {
+    const [kind, , submodule] = records[index].split(" ", 3);
+    if (kind !== "1" && kind !== "2") continue;
+    if (
+      submodule?.startsWith("S") &&
+      (submodule[2] === "M" || submodule[3] === "U")
+    ) {
+      const error = new Error(
+        "Cannot capture uncommitted submodule contents. Commit or discard changes inside submodules before capturing the parent repository; PatchOath captures submodule commit pointers only.",
+      );
+      error.code = "PATCHOATH_UNCAPTURED_SUBMODULE_CHANGES";
+      throw error;
+    }
+    // A porcelain-v2 rename/copy has a second NUL-delimited pathname, not another record.
+    if (kind === "2") index += 1;
+  }
+}
+
 export async function createWorktreeSnapshot(root, label = "working tree") {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "patchoath-index-"));
   const temporaryIndex = join(temporaryDirectory, "index");
@@ -24,6 +57,7 @@ export async function createWorktreeSnapshot(root, label = "working tree") {
     const head = runGit(root, ["rev-parse", "HEAD"]).trim();
     runGit(root, ["read-tree", "HEAD"], { env });
     runGit(root, ["add", "-A", "--", "."], { env });
+    assertSubmoduleCoverage(root, env);
     const tree = runGit(root, ["write-tree"], { env }).trim();
     const commit = runGit(
       root,

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { runContractDelta } from "../src/contract-delta.mjs";
 import { computeObservedContractDelta } from "../src/core/contract-delta.mjs";
+import { createChangeContract } from "../src/core/contract.mjs";
 import { createEvidenceReceipt } from "../src/core/receipt.mjs";
 import { initializeStore, saveCheckpoint } from "../src/core/store.mjs";
 import {
@@ -63,6 +64,38 @@ function buildCheckpoint({ root, sessionId, before, after, authorization }) {
   checkpoint.receipt = createEvidenceReceipt(checkpoint);
   return checkpoint;
 }
+
+test("contract delta preserves denied rename sources as human-review blockers", () => {
+  const checkpoint = buildCheckpoint({
+    sessionId: "session_rename_fixture",
+    before: "a".repeat(40),
+    after: "b".repeat(40),
+    authorization: createChangeContract({
+      allow: "src/ui/**",
+      deny: "src/auth/**",
+      maxModules: 1,
+    }),
+  });
+  const result = computeObservedContractDelta(checkpoint, [
+    {
+      path: "src/ui/helper.js",
+      oldPath: "src/auth/token.js",
+      status: "renamed",
+      additions: 0,
+      deletions: 0,
+    },
+  ]);
+  assert.equal(result.status, "human-review-required");
+  assert.deepEqual(result.delta.protectedRelaxations, []);
+  assert.deepEqual(result.delta.exactAllowAdditions, []);
+  assert.equal(result.delta.budgets.maxModules.to, 2);
+  assert.ok(
+    result.blockers.some((blocker) =>
+      blocker.files.includes("src/auth/token.js"),
+    ),
+  );
+  assert.equal(result.counterfactual.status, "violated");
+});
 
 async function createTwoModuleCheckpoint() {
   const root = await createRepository();

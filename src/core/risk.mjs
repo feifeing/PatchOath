@@ -1,4 +1,9 @@
-import { classifyFile } from "./classify.mjs";
+import {
+  classifyChangedFile,
+  classifyFile,
+  moduleForPath,
+} from "./classify.mjs";
+import { changedPaths } from "./changed-paths.mjs";
 import { evaluateChangeContract } from "./contract.mjs";
 import { inferPromptIntent } from "./intent.mjs";
 
@@ -38,7 +43,7 @@ function addFactor(factors, id, label, points, detail) {
 
 function enrichFiles(files) {
   return files.map((file) => {
-    const classification = classifyFile(file.path);
+    const classification = classifyChangedFile(file);
     return { ...file, ...classification };
   });
 }
@@ -103,8 +108,11 @@ export function analyzeChangeSet({
 }) {
   const intent = inferPromptIntent(prompt);
   const enrichedFiles = enrichFiles(files);
-  const modules = new Set(enrichedFiles.map((file) => file.module));
-  const directories = new Set(enrichedFiles.map((file) => file.directory));
+  const paths = enrichedFiles.flatMap(changedPaths);
+  const modules = new Set(paths.map(moduleForPath));
+  const directories = new Set(
+    paths.map((path) => classifyFile(path).directory),
+  );
   const signals = new Set(enrichedFiles.flatMap((file) => file.signals));
   const linesChanged = enrichedFiles.reduce(
     (sum, file) => sum + (file.additions || 0) + (file.deletions || 0),
@@ -270,7 +278,7 @@ export function analyzeChangeSet({
     risk: {
       score: riskScore,
       level: levelForRisk(riskScore),
-      model: "patchoath-evidence-risk-v2",
+      model: "patchoath-evidence-risk-v3",
       factors: factors.sort((a, b) => b.points - a.points),
       note: "This is a deterministic review heuristic, not a probability of failure.",
     },

@@ -192,12 +192,25 @@ export async function generateReport(root, checkpoints, selectedId) {
     "contract.css",
     "review.css",
     "historical-review.css",
+    "polish.css",
     "app.js",
     "contract-ui.js",
     "review-ui.js",
     "historical-review-ui.js",
   ]) {
-    await copyFile(join(sourceWebDirectory, name), join(reportDirectory, name));
+    const source = join(sourceWebDirectory, name);
+    const destination = join(reportDirectory, name);
+    if (name.endsWith(".js")) {
+      // Classic scripts work from file://; retain each entry point's module-like scope.
+      const script = await readFile(source, "utf8");
+      await writeFile(
+        destination,
+        `(() => {\n"use strict";\n${script}\n})();\n`,
+        "utf8",
+      );
+    } else {
+      await copyFile(source, destination);
+    }
   }
 
   const assetMap = new Map();
@@ -233,9 +246,10 @@ export async function generateReport(root, checkpoints, selectedId) {
   );
 
   let html = await readFile(join(reportDirectory, "index.html"), "utf8");
+  html = html.replaceAll('<script type="module" src=', "<script src=");
   html = html.replace(
-    '<script type="module" src="./app.js"></script>',
-    '<script src="./report-data.js"></script>\n    <script type="module" src="./app.js"></script>',
+    '<script src="./app.js"></script>',
+    '<script src="./report-data.js"></script>\n    <script src="./app.js"></script>',
   );
   await writeFile(join(reportDirectory, "index.html"), html, "utf8");
 

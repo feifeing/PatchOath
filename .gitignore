@@ -1,4 +1,5 @@
 node_modules/
+.patchoath/
 .vibetrace/
 playwright-report/
 test-results/

@@ -55,7 +55,7 @@ test("PatchOath restore is dry-run by default and apply restores the before work
   const applied = run(root, ["restore", "--apply"]);
   assert.match(applied, /HEAD and index unchanged/u);
   assert.equal(
-    await readFile(join(root, "app.js"), "utf8"),
+    (await readFile(join(root, "app.js"), "utf8")).replaceAll("\r\n", "\n"),
     "export const value = 1;\n",
   );
   await assert.rejects(access(join(root, "generated.js")), { code: "ENOENT" });

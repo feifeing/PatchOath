@@ -1,4 +1,5 @@
 import { classifyFile, moduleForPath } from "./classify.mjs";
+import { changedPaths } from "./changed-paths.mjs";
 
 const RUNTIME_CONTRACT_ENV = "PATCHOATH_CHANGE_CONTRACT";
 const LEGACY_RUNTIME_CONTRACT_ENV = "VIBETRACE_CHANGE_CONTRACT";
@@ -74,7 +75,7 @@ function finiteLimit(value) {
 function modulesForFiles(files) {
   return new Set(
     files
-      .map((file) => file.module || moduleForPath(file.path))
+      .flatMap((file) => changedPaths(file).map(moduleForPath))
       .filter(Boolean),
   );
 }
@@ -175,31 +176,32 @@ export function evaluateChangeContract(contract, files = []) {
   const protectedSurfaces = new Set(effectiveContract.protectedSurfaces || []);
 
   for (const file of files) {
-    const path = file.path.replaceAll("\\", "/");
-    const denied = matchesAny(path, effectiveContract.deny);
-    const allowed =
-      !allowIsRestrictive || matchesAny(path, effectiveContract.allow);
-    const signals = file.signals || classifyFile(path).signals;
-    const matchedSurfaces = signals.filter((signal) =>
-      protectedSurfaces.has(signal),
-    );
+    for (const path of changedPaths(file)) {
+      const denied = matchesAny(path, effectiveContract.deny);
+      const allowed =
+        !allowIsRestrictive || matchesAny(path, effectiveContract.allow);
+      const signals = classifyFile(path).signals;
+      const matchedSurfaces = signals.filter((signal) =>
+        protectedSurfaces.has(signal),
+      );
 
-    if (denied) {
-      pathProtectedFiles.push(path);
-      protectedFiles.add(path);
-    }
-    if (!allowed) unauthorizedFiles.push(path);
-    if (matchedSurfaces.length > 0) {
-      protectedFiles.add(path);
-      protectedSurfaceFiles.add(path);
-      for (const surface of matchedSurfaces) {
-        if (!protectedSurfaceHits.has(surface))
-          protectedSurfaceHits.set(surface, []);
-        protectedSurfaceHits.get(surface).push(path);
+      if (denied) {
+        pathProtectedFiles.push(path);
+        protectedFiles.add(path);
       }
+      if (!allowed) unauthorizedFiles.push(path);
+      if (matchedSurfaces.length > 0) {
+        protectedFiles.add(path);
+        protectedSurfaceFiles.add(path);
+        for (const surface of matchedSurfaces) {
+          if (!protectedSurfaceHits.has(surface))
+            protectedSurfaceHits.set(surface, []);
+          protectedSurfaceHits.get(surface).push(path);
+        }
+      }
+      if (!denied && allowed && matchedSurfaces.length === 0)
+        authorizedFiles.push(path);
     }
-    if (!denied && allowed && matchedSurfaces.length === 0)
-      authorizedFiles.push(path);
   }
 
   if (pathProtectedFiles.length > 0) {
@@ -265,8 +267,8 @@ export function evaluateChangeContract(contract, files = []) {
     declared: true,
     status: violations.length === 0 ? "compliant" : "violated",
     violations,
-    authorizedFiles,
-    unauthorizedFiles,
+    authorizedFiles: [...new Set(authorizedFiles)],
+    unauthorizedFiles: [...new Set(unauthorizedFiles)],
     protectedFiles: [...protectedFiles].sort(),
     protectedSurfaceFiles: [...protectedSurfaceFiles].sort(),
     protectedSurfacesTouched: touchedSurfaces,

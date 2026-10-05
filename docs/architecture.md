@@ -4,6 +4,8 @@ PatchOath v0.3 is a local CLI plus a standalone read-only review report. Its arc
 
 `Intent → Authority → Effect → Review → Disclosure`
 
+Generated reports can be opened directly through `file://` without a server. The generator wraps each independent browser entry point in its own function scope and loads classic scripts after the report data, avoiding module-fetch restrictions for local files. The development dashboard keeps its existing module entry points.
+
 ## Core invariants
 
 1. Snapshot capture must not move `HEAD`, replace the real Git index, stash files, or intentionally mutate the worktree.
@@ -117,6 +119,8 @@ For a before or after worktree snapshot, PatchOath:
 
 The repository's real index is not used for those writes. Ignored files remain ignored; tracked, staged, unstaged, deleted, renamed, and untracked non-ignored files are represented in the snapshot.
 
+Submodules contribute their commit pointers, not recursive file snapshots. Worktree capture refuses tracked or untracked uncommitted submodule changes because the parent snapshot cannot represent those bytes. This inspection uses the temporary index and disables optional Git locks, preserving the real index. A committed submodule pointer change remains visible even when repository Git settings request that submodules be ignored.
+
 Legacy `refs/vibetrace/checkpoints/…` references remain verification candidates for old checkpoints; new checkpoints do not intentionally write that namespace.
 
 ## Local store migration
@@ -155,6 +159,8 @@ A normalized file entry resembles:
 ```
 
 The same normalized model is used by checkpoint comparisons, contract evaluation, risk analysis, Contract Delta derivation, and evidence receipts.
+
+Evidence diff commands explicitly disable external diff drivers, text conversion, and terminal color, and include submodule pointer changes regardless of local ignore settings. These options keep displayed patches tied to the compared Git objects. Git clean filters and attributes used during snapshot creation remain part of Git's normal object representation; this is not a raw filesystem-byte snapshot.
 
 ## Checkpoint schema
 
