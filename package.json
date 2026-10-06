@@ -55,9 +55,9 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "pngjs": "^7.0.0",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.9"
   },
   "license": "MIT"
 }
