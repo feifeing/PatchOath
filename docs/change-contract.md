@@ -76,6 +76,10 @@ Rules compose as constraints; they do not grant exceptions to one another.
 - One or more violations produce `contractCompliance.status = "violated"`.
 - Any explicit contract violation is surfaced as **Authorization Drift** in Blast Radius and risk analysis.
 
+For a rename, both the old and new paths must satisfy allow/deny and protected-surface rules. Moving `src/auth/token.js` to `src/ui/helper.js` still touches the protected authentication source. Module and directory spread include both endpoints; the rename remains one file entry for the file budget. A copy checks its destination because its source was not modified; separately observed source edits are evaluated independently.
+
+New risk analysis uses `patchoath-evidence-risk-v3` to identify this expanded rename coverage. Historical stored analysis and Evidence Receipts retain their original values; verifying an old receipt does not silently rescore it with the new model.
+
 Current violation IDs are:
 
 ```text

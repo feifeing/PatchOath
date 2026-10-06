@@ -296,9 +296,18 @@ const demoCheckpoints = [
 
 const report = window.__PATCHOATH_REPORT__ || window.__VIBETRACE_REPORT__;
 const isReportMode = Boolean(report);
-const checkpoints = report?.checkpoints?.length
-  ? report.checkpoints
-  : demoCheckpoints;
+document.body.dataset.reportMode = String(isReportMode);
+const checkpoints = isReportMode ? report.checkpoints || [] : demoCheckpoints;
+if (isReportMode) {
+  for (const element of document.querySelectorAll("[data-demo-only]"))
+    element.hidden = true;
+  document.getElementById("page-title").textContent =
+    "Your captured patch. The evidence behind it.";
+  document.querySelector(".intro-copy").textContent =
+    "Compare the declared scope with the captured Git effect, review the evidence, and check the disclosure boundary before sharing.";
+  document.getElementById("sessionMode").textContent =
+    `LOCAL REPORT · ${checkpoints.length} CHECKPOINT${checkpoints.length === 1 ? "" : "S"}`;
+}
 let selectedId = report?.selectedId || checkpoints[0]?.id;
 let comparePosition = 52;
 let visualMode = "wipe";
@@ -393,12 +402,12 @@ function renderTimeline() {
       const active = checkpoint.id === selectedId;
       const analysis = checkpoint.analysis;
       const risk = analysis?.risk || { level: "low", score: 0 };
-      return `<button class="timeline-item ${active ? "active" : ""}" data-checkpoint="${escapeHtml(checkpoint.id)}" role="listitem" type="button" aria-pressed="${active}">
+      return `<button class="timeline-item ${active ? "active" : ""}" data-checkpoint="${escapeHtml(checkpoint.id)}" type="button" aria-pressed="${active}">
       <span class="timeline-node"><i></i><b>${String(checkpoints.length - index).padStart(2, "0")}</b></span>
       <span class="timeline-content">
-        <span class="timeline-meta">${shortTime(checkpoint.createdAt)} <i>·</i> ${analysis?.summary?.filesChanged || 0} files</span>
+        <span class="timeline-meta">${shortTime(checkpoint.createdAt)} <i>·</i> ${escapeHtml(analysis?.summary?.filesChanged || 0)} files</span>
         <strong>${escapeHtml(checkpoint.prompt.text)}</strong>
-        <span class="timeline-result"><em class="${levelClass(risk.level)}">${escapeHtml(risk.level)}</em><b>blast ${analysis?.blastRadius?.score || 0}</b></span>
+        <span class="timeline-result"><em class="${levelClass(risk.level)}">${escapeHtml(risk.level)}</em><b>blast ${escapeHtml(analysis?.blastRadius?.score || 0)}</b></span>
       </span>
     </button>`;
     })
@@ -531,7 +540,7 @@ function renderVisual(checkpoint) {
   elements.visualEvidence.innerHTML = evidence
     .map(
       (item) =>
-        `<div class="evidence-stat ${item.active ? "active" : ""}"><span>${item.label}</span><strong>${item.value}</strong><small>${item.detail}</small></div>`,
+        `<div class="evidence-stat ${item.active ? "active" : ""}"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong><small>${escapeHtml(item.detail)}</small></div>`,
     )
     .join("");
 }
@@ -580,7 +589,7 @@ function renderImpact(checkpoint) {
     .slice(0, 5)
     .map(
       (factor) =>
-        `<div class="risk-factor" title="${escapeHtml(factor.detail || "")}"><div><span>${escapeHtml(factor.label)}</span><b>+${factor.points}</b></div><i><em style="width:${Math.max(7, (factor.points / maxFactor) * 100)}%"></em></i></div>`,
+        `<div class="risk-factor" title="${escapeHtml(factor.detail || "")}"><div><span>${escapeHtml(factor.label)}</span><b>+${escapeHtml(factor.points)}</b></div><i><em style="width:${Math.max(7, (factor.points / maxFactor) * 100)}%"></em></i></div>`,
     )
     .join("");
   elements.fileCount.textContent = analysis.summary.filesChanged;
@@ -594,7 +603,7 @@ function renderImpact(checkpoint) {
       const sensitive = file.signals?.some((signal) =>
         ["auth", "routing", "dependencies", "ci", "database"].includes(signal),
       );
-      return `<div class="file-row"><span class="file-signal ${levelClass(sensitive ? "high" : "low")}"></span><code>${escapeHtml(file.path)}</code><span><b>+${file.additions ?? 0}</b><i>−${file.deletions ?? 0}</i></span></div>`;
+      return `<div class="file-row"><span class="file-signal ${levelClass(sensitive ? "high" : "low")}"></span><code>${escapeHtml(file.path)}</code><span><b>+${escapeHtml(file.additions ?? 0)}</b><i>−${escapeHtml(file.deletions ?? 0)}</i></span></div>`;
     })
     .join("");
   if (remainingFiles > 0) {
@@ -607,7 +616,17 @@ function renderImpact(checkpoint) {
 
 function render() {
   const checkpoint = selectedCheckpoint();
-  if (!checkpoint) return;
+  if (!checkpoint) {
+    elements.evidenceTitle.textContent =
+      "No captured checkpoints in this report";
+    elements.checkpointCount.textContent = "00";
+    document.querySelector(".workspace").hidden = true;
+    document.getElementById("reviewPlane").hidden = true;
+    document.querySelector(".command-strip").hidden = true;
+    document.querySelector(".workspace-heading h2").textContent =
+      "No captured checkpoints in this report.";
+    return;
+  }
   renderTimeline();
   elements.evidenceTitle.textContent = checkpoint.prompt.text;
   elements.checkpointId.textContent = checkpoint.id.replace(
@@ -633,7 +652,7 @@ async function copyText(value, message) {
     await navigator.clipboard.writeText(value);
     showToast(message);
   } catch {
-    showToast("Copy was blocked by the browser");
+    showToast("Copy unavailable — select the command text to copy manually");
   }
 }
 
@@ -657,9 +676,21 @@ elements.copyId.addEventListener("click", () =>
 );
 elements.copyCommand.addEventListener("click", () =>
   copyText(
-    'patchoath checkpoint --prompt "Make the hero cinematic" --url http://localhost:3000',
+    document
+      .getElementById("checkpointCommand")
+      .textContent.trim()
+      .replace(/\s+/gu, " "),
     "Command copied",
   ),
 );
+
+document
+  .getElementById("copySetup")
+  .addEventListener("click", () =>
+    copyText(
+      document.getElementById("setupCommand").textContent,
+      "Setup commands copied",
+    ),
+  );
 
 render();

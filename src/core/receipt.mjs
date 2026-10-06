@@ -123,6 +123,8 @@ function coverageForVersion(version) {
       fileManifestBound: false,
       intentAnalysisBound: false,
       visualAnalysisBound: false,
+      ignoredPathEvidenceBound: false,
+      ignoredContentCaptured: false,
       scope: "legacy-v1",
     };
   }
@@ -132,6 +134,8 @@ function coverageForVersion(version) {
       fileManifestBound: true,
       intentAnalysisBound: true,
       visualAnalysisBound: true,
+      ignoredPathEvidenceBound: false,
+      ignoredContentCaptured: false,
       scope: "effect-manifest-v2",
     };
   }

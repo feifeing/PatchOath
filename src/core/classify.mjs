@@ -1,4 +1,5 @@
 import { dirname, extname } from "node:path";
+import { changedPaths } from "./changed-paths.mjs";
 
 const SIGNAL_RULES = [
   [
@@ -100,4 +101,15 @@ export function classifyFile(path) {
     directory: normalizeRepoPath(dirname(normalized)) || "(root)",
     extension: extname(normalized).toLowerCase() || "(none)",
   };
+}
+
+export function classifyChangedFile(file) {
+  const destination = classifyFile(file.path);
+  const observedSignals = new Set(
+    changedPaths(file).flatMap((path) => classifyFile(path).signals),
+  );
+  const signals = PRIMARY_PRIORITY.filter((signal) =>
+    observedSignals.has(signal),
+  );
+  return { ...destination, signals, category: signals[0] || "code" };
 }

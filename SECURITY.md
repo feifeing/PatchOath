@@ -4,7 +4,7 @@ PatchOath reads Git state, writes local checkpoint evidence, can capture an expl
 
 ## Reporting a vulnerability
 
-Please use [GitHub private vulnerability reporting](https://github.com/feifeing/vibetrace/security/advisories/new). Do not open a public issue containing exploit details, private repository content, credentials, tokens, screenshots, prompt text, or proprietary evidence.
+Please use [GitHub private vulnerability reporting](https://github.com/feifeing/PatchOath/security/advisories/new). Do not open a public issue containing exploit details, private repository content, credentials, tokens, screenshots, prompt text, or proprietary evidence.
 
 Include the affected command, operating system, Node and Git versions, expected behavior, observed behavior, and a minimal reproduction when it is safe to share.
 

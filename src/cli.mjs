@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 import {
   BRAND_NAME,
@@ -23,6 +23,7 @@ import {
   loadCheckpoint,
   loadSession,
   loadStore,
+  prepareArtifactDirectory,
   removeCheckpointFromSession,
   saveCheckpoint,
   saveState,
@@ -316,8 +317,7 @@ async function captureBefore(root, checkpoint, options, config) {
   if (!options["--url"]) return checkpoint;
   const viewport = viewportFrom(options["--viewport"], config.visual.viewport);
   const waitMs = waitFrom(options["--wait"], config.visual.waitMs);
-  const artifactDirectory = join(storePaths(root).artifacts, checkpoint.id);
-  await mkdir(artifactDirectory, { recursive: true });
+  const artifactDirectory = await prepareArtifactDirectory(root, checkpoint.id);
   const capture = await capturePage({
     url: options["--url"],
     outputPath: join(artifactDirectory, "before.png"),
@@ -338,7 +338,7 @@ async function captureBefore(root, checkpoint, options, config) {
 
 async function finishVisual(root, checkpoint) {
   if (!checkpoint.visual?.before) return null;
-  const artifactDirectory = join(storePaths(root).artifacts, checkpoint.id);
+  const artifactDirectory = await prepareArtifactDirectory(root, checkpoint.id);
   const after = await capturePage({
     url: checkpoint.visual.url,
     outputPath: join(artifactDirectory, "after.png"),

@@ -1,4 +1,5 @@
 import { runGit } from "./git.mjs";
+import { ignoredEvidenceCoverage } from "./ignored.mjs";
 import { createIndexSnapshot, createWorktreeSnapshot } from "./snapshot.mjs";
 
 function parseNameStatus(output) {
@@ -90,15 +91,35 @@ export function parseDiffOutputs({ nameStatus = "", numstat = "" }) {
 }
 
 export function collectCommitDiff(root, before, after) {
-  const common = ["--find-renames", "--find-copies", before, after, "--"];
+  const common = [
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-color",
+    "--ignore-submodules=none",
+    "--find-renames",
+    "--find-copies",
+    before,
+    after,
+    "--",
+  ];
   const nameStatus = runGit(root, ["diff", "--name-status", "-z", ...common]);
   const numstat = runGit(root, ["diff", "--numstat", "-z", ...common]);
-  return parseDiffOutputs({ nameStatus, numstat });
+  const files = parseDiffOutputs({ nameStatus, numstat });
+  Object.defineProperty(files, "evidenceCoverage", {
+    value: ignoredEvidenceCoverage(root),
+    enumerable: false,
+  });
+  return files;
 }
 
 export function collectPatch(root, before, after) {
   return runGit(root, [
     "diff",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-color",
+    "--ignore-submodules=none",
+    "--submodule=short",
     "--binary",
     "--find-renames",
     before,

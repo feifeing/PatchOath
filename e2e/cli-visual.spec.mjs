@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
+import { once } from "node:events";
 import { createServer } from "node:net";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -97,7 +98,16 @@ test("PatchOath captures and compares a real before/after page", async () => {
     expect(checkpoint.analysis.visual.semantic.supported).toBe(false);
     expect(checkpoint.visual.before.image).not.toMatch(/^\//u);
   } finally {
-    server.kill("SIGTERM");
-    await rm(root, { recursive: true, force: true });
+    if (server.exitCode === null && server.signalCode === null) {
+      const stopped = once(server, "exit");
+      server.kill("SIGTERM");
+      await stopped;
+    }
+    await rm(root, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   }
 });

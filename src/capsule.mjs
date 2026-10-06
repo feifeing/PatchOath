@@ -1,12 +1,16 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { isAbsolute, join, resolve } from "node:path";
 import {
   createDisclosureCapsule,
   createDisclosurePolicy,
   verifyDisclosureCapsule,
 } from "./core/disclosure.mjs";
 import { verifyEvidenceReceipt } from "./core/receipt.mjs";
-import { listCheckpoints, storePaths } from "./core/store.mjs";
+import { writeFileAtomic } from "./core/safe-file.mjs";
+import {
+  listCheckpoints,
+  prepareDefaultCapsuleDirectory,
+} from "./core/store.mjs";
 import { findRepositoryRoot } from "./git/git.mjs";
 
 const HELP = `patchoath capsule [checkpoint] [options]
@@ -16,7 +20,7 @@ Create a privacy-first Evidence Capsule from a completed checkpoint. Source Evid
 
 Options:
   --out <file>           Write to a specific path; refuses to overwrite by default
-  --force                Allow an explicit --out path to overwrite an existing file
+  --force                Allow an explicit --out path to replace a regular file; symbolic-link targets remain refused
   --include-prompt       Include the full prompt text
   --include-paths        Include changed relative file paths
   --include-contract     Include full change-contract patterns
@@ -116,20 +120,11 @@ async function verifyFile(path, stdout, json) {
 }
 
 async function writeCapsule(path, bytes, { refuseOverwrite = false } = {}) {
-  await mkdir(dirname(path), { recursive: true });
-  try {
-    await writeFile(path, bytes, {
-      encoding: "utf8",
-      flag: refuseOverwrite ? "wx" : "w",
-    });
-  } catch (error) {
-    if (error.code === "EEXIST" && refuseOverwrite) {
-      throw new Error(
-        `Output already exists: ${path}. Choose a different --out path or pass --force to replace it.`,
-      );
-    }
-    throw error;
-  }
+  await writeFileAtomic(path, bytes, {
+    encoding: "utf8",
+    label: "Output",
+    refuseOverwrite,
+  });
 }
 
 function sourceReceiptFailure(checkpoint, verification) {
@@ -181,7 +176,9 @@ export async function runCapsule(
       includeContract: options.includeContract,
     });
     const capsule = createDisclosureCapsule(checkpoint, policy);
-    const defaultDirectory = join(storePaths(root).directory, "capsules");
+    const defaultDirectory = options.out
+      ? null
+      : await prepareDefaultCapsuleDirectory(root);
     const outputPath = options.out
       ? isAbsolute(options.out)
         ? options.out

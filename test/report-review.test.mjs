@@ -179,6 +179,9 @@ test("generated reports derive review evidence and historical human outcomes", a
   assert.match(source, /Project Nightjar/u);
   assert.match(source, /Review Fixture/u);
   const html = await readFile(report.index, "utf8");
+  for (const match of html.matchAll(/(?:href|src)="\.\/([^"?#]+)"/gu)) {
+    await readFile(join(report.directory, match[1]));
+  }
   assert.match(html, /review\.css/u);
   assert.match(html, /review-ui\.js/u);
   assert.match(html, /historical-review\.css/u);

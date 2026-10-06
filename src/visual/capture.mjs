@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { rm } from "node:fs/promises";
+import {
+  publishSafeTemporaryFile,
+  readFileSafe,
+  reserveSafeTemporaryFile,
+} from "../core/safe-file.mjs";
 
 async function loadPlaywright() {
   try {
@@ -33,10 +37,10 @@ export async function capturePage({
 }) {
   const { chromium } = await loadPlaywright();
   const normalizedUrl = validateUrl(url);
-  await mkdir(dirname(outputPath), { recursive: true });
-  const browser = await chromium.launch({ headless: true });
-
+  const temporaryOutputPath = await reserveSafeTemporaryFile(outputPath);
+  let browser;
   try {
+    browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({
       viewport,
       deviceScaleFactor: 1,
@@ -101,13 +105,25 @@ export async function capturePage({
 
     const html = await page.content();
     await page.screenshot({
-      path: outputPath,
+      path: temporaryOutputPath,
+      type: "png",
       fullPage: true,
       animations: "disabled",
     });
     const imageSha256 = createHash("sha256")
-      .update(await readFile(outputPath))
+      .update(
+        await readFileSafe(
+          temporaryOutputPath,
+          undefined,
+          "Temporary visual artifact file",
+        ),
+      )
       .digest("hex");
+    await publishSafeTemporaryFile(
+      temporaryOutputPath,
+      outputPath,
+      "Visual artifact file",
+    );
 
     return {
       url: page.url(),
@@ -128,6 +144,7 @@ export async function capturePage({
       },
     };
   } finally {
-    await browser.close();
+    await browser?.close();
+    await rm(temporaryOutputPath, { force: true }).catch(() => {});
   }
 }

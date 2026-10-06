@@ -1,5 +1,5 @@
-import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative } from "node:path";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { computeObservedContractDelta } from "../core/contract-delta.mjs";
 import {
@@ -9,23 +9,19 @@ import {
 import { verifyEvidenceReceipt } from "../core/receipt.mjs";
 import { verifyHistoricalEffectReview } from "../core/review-record.mjs";
 import { listHistoricalEffectReviews } from "../core/review-store.mjs";
-import { storePaths } from "../core/store.mjs";
 import { collectCommitDiff } from "../git/diff.mjs";
+import {
+  copyReportEvidenceAsset,
+  createReportAssetAudit,
+} from "./asset-boundary.mjs";
+import {
+  assertReportCheckpointIds,
+  prepareReportOutput,
+} from "./output-boundary.mjs";
 
 const sourceWebDirectory = fileURLToPath(
   new URL("../../web/", import.meta.url),
 );
-
-async function copyIfPresent(source, destination) {
-  try {
-    await access(source);
-    await mkdir(dirname(destination), { recursive: true });
-    await copyFile(source, destination);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function unavailable(reason, detail = null) {
   return { status: "unavailable", reason, detail };
@@ -161,13 +157,13 @@ function buildReviewEvidence(root, checkpoint, historicalRecords) {
 
 function portableCheckpoint(root, checkpoint, assetMap, historicalRecords) {
   const copy = structuredClone(checkpoint);
-  if (copy.visual?.before?.image)
-    copy.visual.before.image = assetMap.get(copy.visual.before.image) || null;
-  if (copy.visual?.after?.image)
-    copy.visual.after.image = assetMap.get(copy.visual.after.image) || null;
-  if (copy.analysis?.visual?.pixel?.diffImage) {
+  if (copy.visual?.before?.image != null)
+    copy.visual.before.image = assetMap.get(`${checkpoint.id}:before`) || null;
+  if (copy.visual?.after?.image != null)
+    copy.visual.after.image = assetMap.get(`${checkpoint.id}:after`) || null;
+  if (copy.analysis?.visual?.pixel?.diffImage != null) {
     copy.analysis.visual.pixel.diffImage =
-      assetMap.get(copy.analysis.visual.pixel.diffImage) || null;
+      assetMap.get(`${checkpoint.id}:diff`) || null;
   }
   if (copy.before) delete copy.before.ref;
   if (copy.after) delete copy.after.ref;
@@ -176,14 +172,16 @@ function portableCheckpoint(root, checkpoint, assetMap, historicalRecords) {
 }
 
 export async function generateReport(root, checkpoints, selectedId) {
+  assertReportCheckpointIds(checkpoints);
   const selected =
     checkpoints.find((checkpoint) => checkpoint.id === selectedId) ||
     checkpoints[0];
   if (!selected)
     throw new Error("There are no completed checkpoints to report.");
-  const reportDirectory = join(storePaths(root).reports, selected.id);
-  const assetDirectory = join(reportDirectory, "assets");
-  await mkdir(assetDirectory, { recursive: true });
+  const { reportDirectory, assetDirectory } = await prepareReportOutput(
+    root,
+    selected.id,
+  );
 
   for (const name of [
     "index.html",
@@ -192,27 +190,46 @@ export async function generateReport(root, checkpoints, selectedId) {
     "contract.css",
     "review.css",
     "historical-review.css",
+    "polish.css",
     "app.js",
     "contract-ui.js",
     "review-ui.js",
     "historical-review-ui.js",
   ]) {
-    await copyFile(join(sourceWebDirectory, name), join(reportDirectory, name));
+    const source = join(sourceWebDirectory, name);
+    const destination = join(reportDirectory, name);
+    if (name.endsWith(".js")) {
+      // Classic scripts work from file://; retain each entry point's module-like scope.
+      const script = await readFile(source, "utf8");
+      await writeFile(
+        destination,
+        `(() => {\n"use strict";\n${script}\n})();\n`,
+        "utf8",
+      );
+    } else {
+      await copyFile(source, destination);
+    }
   }
 
   const assetMap = new Map();
+  const assetAudit = createReportAssetAudit();
   for (const checkpoint of checkpoints) {
-    const sources = [
-      checkpoint.visual?.before?.image,
-      checkpoint.visual?.after?.image,
-      checkpoint.analysis?.visual?.pixel?.diffImage,
-    ].filter(Boolean);
-    for (const source of sources) {
-      const destinationName = `${checkpoint.id}-${basename(source)}`;
+    const sources = Object.entries({
+      before: checkpoint.visual?.before?.image,
+      after: checkpoint.visual?.after?.image,
+      diff: checkpoint.analysis?.visual?.pixel?.diffImage,
+    }).filter(([, source]) => source != null);
+    for (const [role, source] of sources) {
+      const destinationName = `${checkpoint.id}-${role}.png`;
       const destination = join(assetDirectory, destinationName);
-      const sourcePath = isAbsolute(source) ? source : join(root, source);
-      if (await copyIfPresent(sourcePath, destination))
-        assetMap.set(source, `./assets/${destinationName}`);
+      const result = await copyReportEvidenceAsset(
+        root,
+        source,
+        destination,
+        assetAudit,
+      );
+      if (result.copied)
+        assetMap.set(`${checkpoint.id}:${role}`, `./assets/${destinationName}`);
     }
   }
 
@@ -222,6 +239,7 @@ export async function generateReport(root, checkpoints, selectedId) {
     mode: "report",
     selectedId: selected.id,
     generatedAt: new Date().toISOString(),
+    assetIngestion: assetAudit,
     checkpoints: checkpoints.map((checkpoint) =>
       portableCheckpoint(root, checkpoint, assetMap, historicalRecords),
     ),
@@ -233,9 +251,10 @@ export async function generateReport(root, checkpoints, selectedId) {
   );
 
   let html = await readFile(join(reportDirectory, "index.html"), "utf8");
+  html = html.replaceAll('<script type="module" src=', "<script src=");
   html = html.replace(
-    '<script type="module" src="./app.js"></script>',
-    '<script src="./report-data.js"></script>\n    <script type="module" src="./app.js"></script>',
+    '<script src="./app.js"></script>',
+    '<script src="./report-data.js"></script>\n    <script src="./app.js"></script>',
   );
   await writeFile(join(reportDirectory, "index.html"), html, "utf8");
 

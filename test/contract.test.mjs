@@ -236,3 +236,82 @@ test("evidence receipts are deterministic for the same modern evidence", () => {
   assert.equal(first.receiptId, second.receiptId);
   assert.match(first.receiptId, /^poe_[a-f0-9]{24}$/u);
 });
+
+const renameEffect = {
+  path: "src/ui/helper.js",
+  oldPath: "src/auth/token.js",
+  status: "renamed",
+  additions: 0,
+  deletions: 0,
+};
+
+test("rename authorization checks both the removed and added path", () => {
+  const result = evaluateChangeContract(
+    createChangeContract({ allow: "src/ui/**", deny: "src/auth/**" }),
+    [renameEffect],
+  );
+  assert.equal(result.status, "violated");
+  assert.deepEqual(result.protectedFiles, [renameEffect.oldPath]);
+  assert.deepEqual(result.unauthorizedFiles, [renameEffect.oldPath]);
+});
+
+test("rename source surfaces cannot be hidden by destination classification", () => {
+  const analysis = analyzeChangeSet({
+    prompt: "Move a helper",
+    contract: createChangeContract({ protectedSurfaces: "auth" }),
+    files: [renameEffect],
+  });
+  assert.equal(analysis.contractCompliance.status, "violated");
+  assert.deepEqual(analysis.contractCompliance.protectedSurfaceFiles, [
+    renameEffect.oldPath,
+  ]);
+  assert.ok(analysis.blastRadius.sensitiveAreas.includes("auth"));
+  assert.ok(analysis.files[0].signals.includes("auth"));
+});
+
+test("cross-module renames count both modules without double-counting files", () => {
+  const analysis = analyzeChangeSet({
+    contract: createChangeContract({ maxModules: 1, maxFiles: 1 }),
+    files: [renameEffect],
+  });
+  assert.equal(analysis.contractCompliance.totals.modules, 2);
+  assert.equal(analysis.summary.modulesChanged, 2);
+  assert.equal(analysis.summary.filesChanged, 1);
+  assert.deepEqual(
+    analysis.contractCompliance.violations.map((item) => item.id),
+    ["module-budget-exceeded"],
+  );
+});
+
+test("same-module allowed renames remain compliant", () => {
+  const result = evaluateChangeContract(
+    createChangeContract({ allow: "src/ui/**", maxModules: 1 }),
+    [{ ...renameEffect, oldPath: "src/ui/old-helper.js" }],
+  );
+  assert.equal(result.status, "compliant");
+  assert.equal(result.totals.modules, 1);
+});
+
+test("supplied classification cannot suppress a protected path surface", () => {
+  const result = evaluateChangeContract(
+    createChangeContract({ protectedSurfaces: "auth" }),
+    [{ path: "src/auth/token.js", signals: ["ui"], module: "src/ui" }],
+  );
+  assert.equal(result.status, "violated");
+  assert.deepEqual(result.protectedSurfaceFiles, ["src/auth/token.js"]);
+});
+
+test("copy origins do not count as modified protected paths", () => {
+  const analysis = analyzeChangeSet({
+    contract: createChangeContract({
+      allow: "src/ui/**",
+      deny: "src/auth/**",
+      protectedSurfaces: "auth",
+      maxModules: 1,
+    }),
+    files: [{ ...renameEffect, status: "copied" }],
+  });
+  assert.equal(analysis.contractCompliance.status, "compliant");
+  assert.equal(analysis.summary.modulesChanged, 1);
+  assert.deepEqual(analysis.blastRadius.sensitiveAreas, []);
+});
